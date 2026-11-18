@@ -1,0 +1,1 @@
+# estudio-parcial2-plataformas
