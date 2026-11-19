@@ -40,127 +40,632 @@ details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin
 
 <!-- ============ RESUMEN ============ -->
 <section id="resumen">
-<div class="card"><h3>Hilo conductor del parcial</h3>
-<table><tr><th>Sesión</th><th>Tesis</th><th>Pregunta que responde</th></tr>
-<tr><td><span class="tag t10">S10</span>EDA I</td><td>El punto de acoplamiento se traslada del esquema privado de la BD al <b>contrato público del flujo de eventos</b>.</td><td>¿Cómo diseñar eventos y contratos?</td></tr>
-<tr><td><span class="tag t11">S11</span>EDA II</td><td>La plataforma traduce la gobernanza de contratos en <b>capacidades de autoservicio</b> y desacopla el código de negocio de la infraestructura.</td><td>¿Qué plataforma sostiene esos contratos a escala?</td></tr>
-<tr><td><span class="tag t12">S12</span>Estructura</td><td>La estructura de equipos y sus interacciones determinan la arquitectura; la plataforma interna, gestionada como producto, es el <b>sustrato de su autonomía</b>.</td><td>¿Qué estructura de equipos produce esa arquitectura?</td></tr>
-<tr><td><span class="tag t13">S13</span>Operativo</td><td>Una plataforma madura se opera como <b>producto curado, resiliente y de adopción voluntaria</b>; su madurez se gana por niveles, no por decreto.</td><td>¿Cómo se opera para que la adopción sea voluntaria y sostenible?</td></tr>
-<tr><td><span class="tag t14">S14</span>Métricas</td><td>El valor de la plataforma es el <b>desperdicio que elimina</b>, demostrado con evidencia económica y métricas (DORA + SPACE + DevEx).</td><td>¿Cómo demostramos que crea valor?</td></tr>
+<div class="card"><h3>Cómo usar este resumen</h3>
+<p>Cada sesión tiene: <b>definiciones precisas</b> (qué es, qué <i>no</i> es), <b>por qué importa</b>, <b>ejemplos</b> y un recuadro de <b>trampas de examen</b> con las confusiones más comunes. Al final hay un <b>glosario</b> alfabético. Índice:
+<a href="#r10" onclick="event.preventDefault();document.getElementById('r10').scrollIntoView()">S10</a> · <a href="#r11" onclick="event.preventDefault();document.getElementById('r11').scrollIntoView()">S11</a> · <a href="#r12" onclick="event.preventDefault();document.getElementById('r12').scrollIntoView()">S12</a> · <a href="#r13" onclick="event.preventDefault();document.getElementById('r13').scrollIntoView()">S13</a> · <a href="#r14" onclick="event.preventDefault();document.getElementById('r14').scrollIntoView()">S14</a> · <a href="#rglos" onclick="event.preventDefault();document.getElementById('rglos').scrollIntoView()">Glosario</a></p>
+<h4>El hilo conductor (cómo se conectan las 5 sesiones)</h4>
+<table><tr><th>Sesión</th><th>Tesis</th><th>Pregunta que deja abierta</th></tr>
+<tr><td><span class="tag t10">S10</span>EDA I</td><td>El punto de acoplamiento entre sistemas deja de ser el esquema privado de la base de datos y pasa a ser el <b>contrato público del flujo de eventos</b>.</td><td>¿Qué plataforma se necesita para sostener esos contratos a escala?</td></tr>
+<tr><td><span class="tag t11">S11</span>EDA II</td><td>La plataforma convierte la gobernanza de contratos en <b>capacidades de autoservicio</b> y separa el código de negocio de la infraestructura de mensajería.</td><td>¿Qué estructura de equipos produce y sostiene esa arquitectura?</td></tr>
+<tr><td><span class="tag t12">S12</span>Estructura</td><td>La estructura de equipos y sus interacciones <b>determinan</b> la arquitectura; la plataforma interna, gestionada como producto, es el sustrato de la autonomía de los equipos.</td><td>¿Cómo se opera esa plataforma para que la adopción sea voluntaria y sostenible?</td></tr>
+<tr><td><span class="tag t13">S13</span>Operativo</td><td>Una plataforma madura se opera como <b>producto curado, resiliente y de adopción voluntaria</b>; la madurez se gana por niveles, no por decreto.</td><td>¿Cómo demostramos con evidencia que crea valor?</td></tr>
+<tr><td><span class="tag t14">S14</span>Métricas</td><td>El valor de la plataforma es el <b>desperdicio que elimina</b>, y se demuestra con un modelo económico y métricas complementarias (DORA + SPACE + DevEx).</td><td>—</td></tr></table>
+<p class="mut">Lectura en una frase: <i>diseñamos eventos con contratos (S10) → construimos la plataforma que los gobierna (S11) → organizamos los equipos para que esa arquitectura emerja (S12) → operamos la plataforma como producto (S13) → demostramos su valor con números (S14).</i></p>
+</div>
+
+<!-- ===================== S10 ===================== -->
+<div class="card" id="r10"><h3><span class="tag t10">S10</span>Arquitectura Orientada a Eventos I — Fundamentos, diseño de estado y contratos</h3>
+
+<h4>1. El problema de partida: la base de datos monolítica como punto de acoplamiento</h4>
+<p>Antes de EDA, la «verdad» de la organización vive en el <b>esquema relacional privado</b> de cada base de datos. Todo sistema que necesita esos datos se acopla a ese esquema. Esto genera tres problemas:</p>
+<table><tr><th>Problema</th><th>Qué pasa exactamente</th><th>Consecuencia</th></tr>
+<tr><td><b>Integración punto a punto</b></td><td>Sistemas externos hacen SQL directo a la BD de otro equipo o llaman APIs síncronas contra ella; o se montan ETL por lotes.</td><td>Integraciones frágiles y pipelines costosos; cada nueva integración es una conexión más que mantener.</td></tr>
+<tr><td><b>Exposición de la implementación</b></td><td>El esquema <i>interno</i> (tablas, columnas) queda expuesto como si fuera una interfaz pública.</td><td>Si el equipo dueño refactoriza su modelo de datos, los consumidores downstream fallan de inmediato.</td></tr>
+<tr><td><b>Silos analítico y operativo</b></td><td>Lo operativo corre en tiempo real; lo analítico se alimenta por lotes (nocturnos, por ejemplo).</td><td>Dos versiones de los datos «similares pero diferentes»: reportes que no cuadran con la operación.</td></tr></table>
+
+<h4>2. El cambio de paradigma</h4>
+<div class="thesis">De <b>la base de datos como fuente de verdad</b> → al <b>flujo de eventos como fuente de verdad</b>.</div>
+<ul>
+<li>El <b>flujo (stream/tópico)</b> se convierte en el punto principal de acoplamiento entre sistemas distintos. Ya no te acoplas a mis tablas, te acoplas a mi stream y a su contrato.</li>
+<li>Los consumidores <b>se suscriben</b> al flujo y guardan el estado que necesitan en <b>sus propios almacenes</b> (lo «materializan»).</li>
+<li><b>Modelo de consistencia:</b> dentro del productor hay consistencia fuerte y transacciones ACID <i>locales</i>; entre el productor y los consumidores hay <b>consistencia eventual</b> (el consumidor verá el cambio, pero no en el mismo instante).</li>
+</ul>
+
+<h4>3. Habilitadores técnicos (qué capacidades cloud-native lo hicieron posible)</h4>
+<ul>
+<li><b>Registro duradero de solo adición (append-only log):</b> un log donde los eventos se escriben al final y, una vez escritos, son <b>inmutables</b>. <i>Diferencia clave con una cola efímera</i> (p. ej. una cola clásica tipo RabbitMQ/SQS): la cola <b>borra</b> el mensaje cuando alguien lo consume; el log lo <b>conserva</b>, y cada consumidor lleva su propia posición de lectura.</li>
+<li><b>Retención infinita y almacenamiento por niveles (tiered storage):</b> como el log se conserva, una aplicación nueva puede poner su offset al inicio y <b>recrear el estado completo</b> del dominio leyendo los eventos en el orden exacto en que ocurrieron. El tiered storage mueve segmentos viejos a almacenamiento barato («frío», p. ej. S3) sin que el cliente lo note.</li>
+<li><b>Compactación:</b> purga periódicamente las versiones viejas de cada clave y conserva solo la más reciente → el costo de almacenamiento queda acotado y la inicialización es rápida (se detalla en §7).</li>
+<li><b>Transferencia de estado transportado por eventos (ECST):</b> el evento lleva el estado público completo, así el consumidor no necesita hacer callbacks síncronos al origen. El consumidor <b>materializa</b> el flujo en su almacén local mediante <b>upsert por clave primaria</b> (si la clave existe actualiza, si no inserta).</li>
+</ul>
+<p><b>El cambio sociotécnico — malla de datos orientada a eventos (event-driven data mesh):</b></p>
+<ul><li><b>Propiedad soberana:</b> el equipo que <i>crea</i> los datos es el <b>dueño de su contrato público</b> y responde por él.</li>
+<li><b>Contratos estandarizados:</b> el registro de esquemas actúa como <b>gatekeeper</b> (portero) de calidad y evolución.</li></ul>
+
+<h4>4. Propiedades del registro de solo adición</h4>
+<p><b>Tres reglas estructurales</b> (lo que define al log como un historial secuencial e inmutable de hechos de negocio):</p>
+<table><tr><th>Regla</th><th>Significado preciso</th></tr>
+<tr><td><b>APPEND</b></td><td>El productor solo puede añadir al final. Nada se modifica, elimina ni reordena.</td></tr>
+<tr><td><b>READ</b></td><td>La lectura es asíncrona y cada consumidor lee a su propio ritmo. <b>Leer no consume</b> (no borra) el evento: otros consumidores pueden leerlo también.</td></tr>
+<tr><td><b>OFFSET</b></td><td>Cada evento recibe un índice <b>único, monotónico</b> (siempre creciente: 0, 1, 2…) e <b>inmutable</b> dentro de su partición. Es la «dirección» del evento.</td></tr></table>
+<p><b>Cuatro garantías técnicas críticas:</b></p>
+<ol>
+<li><b>Inmutabilidad verdadera:</b> tras el commit, ni el payload, ni el offset, ni el timestamp pueden cambiar. <i>Un error se corrige publicando un nuevo evento</i> (un evento compensatorio o un nuevo estado), nunca editando el registro.</li>
+<li><b>Particionamiento y paralelismo:</b> un tópico se divide en particiones. La <b>clave</b> del evento (p. ej. <code>orderId</code>) se enruta de forma <b>determinista</b> (hash de la clave) a siempre la misma partición. Las particiones son independientes, así que varios consumidores pueden leer en paralelo → escala horizontal.</li>
+<li><b>Ordenamiento estricto (solo dentro de la partición):</b> los eventos de una misma partición se entregan en el orden en que se publicaron. Por eso «Pedido pagado» nunca se procesa antes de «Pedido creado» <i>si ambos tienen la misma clave</i>. ⚠ No hay orden global entre particiones.</li>
+<li><b>Reproducibilidad y tiered storage:</b> retroceder el offset (rewind/replay) reconstruye el estado. El broker descarga segmentos a almacenamiento frío de forma transparente.</li></ol>
+
+<h4>5. Diseño de eventos: tres formas de comunicar estado</h4>
+<p><b>a) Evento de estado — ECST (Event-Carried State Transfer)</b></p>
+<ul><li><b>Definición:</b> copia <b>completa</b> del estado público de la entidad en el momento de crearse el evento, <b>incluidos los campos que no cambiaron</b>. Se comporta como una fila de tabla anexada a un flujo inmutable.</li>
+<li><b>Ejemplo:</b> <code>{"productId":"X123","availableQty":48,"warehouse":"BOG","price":12.5,"updatedAt":"…"}</code> — aunque solo haya cambiado <code>availableQty</code>, viajan todos los campos.</li>
+<li><b>Tres propiedades:</b> (1) <b>desacoplamiento fuerte</b>: la composición del evento se define en el bounded context del productor y nadie se acopla a su modelo interno; (2) <b>materialización</b>: el consumidor proyecta el flujo a su almacén y guarda solo los campos que le interesan; (3) <b>inferencia de transición</b>: comparando el evento nuevo con el anterior de la misma clave se puede deducir qué cambió.</li></ul>
+<p><b>Dos estrategias para diseñar el payload ECST:</b></p>
+<table><tr><th></th><th>1 · Estado actual</th><th>2 · Antes/después (CDC)</th></tr>
+<tr><td>Qué lleva</td><td>Solo el estado nuevo.</td><td>El estado anterior (<code>before</code>) y el posterior (<code>after</code>) en el mismo payload. Es el formato típico de Debezium/CDC.</td></tr>
+<tr><td>Beneficios</td><td>Payload pequeño y <b>muy compactable</b>: el tamaño del flujo es proporcional al número de claves únicas. Es <b>agnóstico a la causa</b> del cambio: el consumidor no se acopla a las transiciones internas del productor.</td><td>Permite consumidores <b>stateless</b> (sin base de datos propia) que reaccionan a cambios específicos, porque ven el antes y el después.</td></tr>
+<tr><td>Trade-off</td><td>Para saber <i>qué</i> campo cambió, el consumidor debe guardar su propio estado y comparar.</td><td>Duplica datos en red y disco. La compactación se complica: un borrado llega como <code>after:null</code> con <code>before</code> poblado, así que el <i>valor</i> del mensaje no es null y el broker <b>no lo reconoce como tombstone</b>.</td></tr></table>
+
+<p><b>b) Evento delta</b></p>
+<ul><li><b>Definición:</b> contiene <b>solo la información del cambio</b>, sin el estado pasado ni el actual. Se nombra con verbos en pasado: <code>itemAddedToCart</code>, <code>orderPaid</code>, <code>userMoved</code>, <code>userDeleted</code>.</li>
+<li><b>Ejemplo:</b> <code>{"productId":"X123","stockChange":-2}</code> — dice que bajó 2, pero no cuánto hay.</li>
+<li><b>Dónde sí funciona:</b> <b>dentro</b> de un bounded context gestionado por <b>un solo equipo</b>, porque ese equipo controla a la vez la definición del evento y la lógica que lo interpreta. Es el patrón natural de <b>event sourcing</b>: el estado interno se construye agregando la secuencia de deltas.</li>
+<li><b>Por qué es frágil entre dominios — cinco riesgos:</b>
+<ol><li><b>Tipos de eventos infinitos:</b> en un dominio no trivial las posibles transiciones son casi infinitas; modelar cada una crea una proliferación masiva de flujos.</li>
+<li><b>Lógica de agregación replicada:</b> cada consumidor tiene que reimplementar el código que reconstruye el estado a partir de deltas. Si el productor cambia sus reglas, hay que coordinar cambios manuales en todos los consumidores.</li>
+<li><b>Evolución deficiente de esquemas:</b> agregar un nuevo tipo de delta rompe consumidores o produce agregaciones incorrectas en silencio, y choca con la convención de «un esquema evolucionable por flujo».</li>
+<li><b>Inversión de la propiedad:</b> los requisitos de los consumidores se imponen al productor y lo presionan a emitir deltas hiperpersonalizados (ej. <code>userReturnedItemAfterTelephoneComplaint</code>). El productor deja de ser dueño de su contrato.</li>
+<li><b>Historial no compactable:</b> como todos los deltas son necesarios para calcular el estado final, no se puede borrar ninguno. Un consumidor nuevo puede tardar <b>semanas</b> en procesar todo el historial hasta llegar a tiempo real.</li></ol></li></ul>
+
+<p><b>c) Evento de notificación</b></p>
+<ul><li><b>Definición:</b> el payload es solo una <b>señal mínima</b> de que algo ocurrió más un <b>URI</b> para ir a buscar los datos al sistema origen. Ej.: <code>{"event":"NEW_MESSAGE","access_uri":"/user/chat/12345"}</code>.</li>
+<li><b>Atractivo aparente:</b> mensajes pequeños y no se duplica estado en varios sistemas.</li>
+<li><b>Por qué es antipatrón para comunicar estado de negocio entre dominios:</b>
+<ol><li><b>Condiciones de carrera y pérdida de historial:</b> el URI apunta a una base <i>mutable</i>. Si el consumidor se retrasa, cuando consulta el estado ya cambió; los estados intermedios se pierden y no hay reconstrucción histórica posible.</li>
+<li><b>Sobrecarga operativa de doble ruta:</b> el productor tiene que mantener el flujo asíncrono <i>y</i> una API REST/gRPC síncrona de alta disponibilidad, con su propio control de acceso y escalamiento.</li>
+<li><b>Acoplamiento fuerte y disponibilidad invertida:</b> el consumidor depende del <i>uptime</i> de la API del productor. Si esa API cae, fallan todos los consumidores. Se anula el beneficio del desacoplamiento asíncrono.</li></ol></li>
+<li><b>Disponibilidad invertida</b> (término clave): en vez de que el consumidor sea independiente gracias al flujo, su disponibilidad queda <i>atada</i> a la del productor, que es justo lo que EDA quería evitar.</li></ul>
+
+<h4>6. Comparativo rápido</h4>
+<table><tr><th></th><th>ECST</th><th>Delta</th><th>Notificación</th></tr>
+<tr><td>Contenido</td><td>Estado completo</td><td>Solo el cambio</td><td>Señal + URI</td></tr>
+<tr><td>Uso recomendado</td><td>Entre dominios</td><td>Dentro del dominio (event sourcing)</td><td>Evitar para estado de negocio</td></tr>
+<tr><td>¿El consumidor necesita llamar al productor?</td><td>No</td><td>Muchas veces sí (para saber el total)</td><td>Siempre</td></tr>
+<tr><td>Compactable</td><td>Sí, altamente</td><td>No</td><td>No aplica (no lleva estado)</td></tr></table>
+
+<h4>7. Compactación de flujos</h4>
+<ul><li><b>Qué es:</b> un proceso <b>asíncrono en segundo plano del broker</b> que, en lugar de borrar eventos por antigüedad (TTL / retención por tiempo), <b>conserva solo el evento más reciente de cada clave</b>. Resultado: el tamaño del flujo es proporcional al <b>número de claves activas</b>, no al tiempo transcurrido.</li>
+<li><b>Ejemplo:</b> clave X123 con eventos en offsets 3, 8 y 15 → tras compactar solo queda el offset 15. Los offsets 3 y 8 desaparecen.</li>
+<li><b>Preservación del offset:</b> los offsets que sobreviven <b>no se renumeran</b>. Quedan «huecos» que un consumidor secuencial maneja sin problema; pedir explícitamente un offset ya compactado devuelve error.</li>
+<li><b>Garantía de consistencia:</b> quien lee un flujo compactado desde el offset 0 materializa <b>exactamente la misma tabla de estado</b> que quien lo ha consumido continuamente desde el inicio (lo que pierde son las transiciones intermedias, no el estado final).</li>
+<li><b>Tombstone (lápida):</b> evento con clave cuyo <b>valor es explícitamente <code>null</code></b>. Cumple dos funciones: (1) le dice al consumidor que <b>borre</b> la entidad de su almacén materializado; (2) le indica al compactador que <b>purgue todo el historial</b> de esa clave.</li>
+<li><b>Tiempo de retraso de compactación (compaction lag):</b> ventana configurable que <b>protege los eventos recientes</b> de la compactación, para dar tiempo a los consumidores de leer cada transición intermedia antes de que se purgue.</li></ul>
+<table><tr><th>Patrón</th><th>Compactabilidad</th><th>Por qué</th></tr>
+<tr><td>ECST</td><td>Alta</td><td>El último evento por clave contiene todo el estado.</td></tr>
+<tr><td>CDC / Debezium</td><td>Difícil</td><td><code>after:null</code> no basta (el valor no es null); Debezium emite un evento <code>op:"d"</code> <b>y además</b> un tombstone separado.</td></tr>
+<tr><td>Delta / acción</td><td>No compactable</td><td>Cada delta es necesario para calcular el estado final.</td></tr></table>
+
+<h4>8. Contratos de datos y Schema Registry</h4>
+<p><b>Dos niveles de abstracción — no son sinónimos:</b></p>
+<table><tr><th></th><th>Esquema de eventos (nivel técnico)</th><th>Contrato de datos (nivel sociotécnico)</th></tr>
+<tr><td>Qué es</td><td>Especificación que declara la estructura: nombres de campos, tipos, valores predeterminados y obligatoriedad.</td><td>Un <b>pacto</b> con todos los consumidores pasados, presentes y futuros.</td></tr>
+<tr><td>Qué resuelve</td><td>Elimina errores de parsing e interpretación. Es la interfaz técnica del flujo.</td><td>Responde: «¿cuáles son las garantías y responsabilidades explícitas asociadas a estos datos?»</td></tr></table>
+<p><b>Anatomía de un contrato de datos completo (6 elementos):</b></p>
+<ol><li><b>Esquema estructural:</b> campos exactos, tipos, documentación en línea; puede incluir varios tipos de evento o versiones en el mismo flujo.</li>
+<li><b>Propiedad explícita:</b> qué equipo de dominio mantiene el flujo, atiende solicitudes de cambio y garantiza la disponibilidad.</li>
+<li><b>SLO y SLA:</b> disponibilidad, latencia máxima de entrega y throughput. «Si el flujo se detiene, el negocio se detiene.»</li>
+<li><b>Reglas de evolución:</b> el modo de compatibilidad (p. ej. FULL_TRANSITIVE) que dicta cómo se puede modificar el esquema.</li>
+<li><b>Seguridad y privacidad:</b> qué campos son PII o datos financieros, permisos RBAC/ACL y <b>cifrado a nivel de campo del lado cliente (CSFLE)</b>: el productor cifra campos sensibles antes de enviarlos, así ni el broker puede leerlos.</li>
+<li><b>Gestión de cambios destructivos:</b> procedimientos acordados, webhooks de notificación y cronogramas de obsolescencia negociados con los consumidores.</li></ol>
+
+<p><b>Schema Registry — definición:</b> servicio centralizado que <b>almacena, gestiona y versiona</b> los esquemas (Avro, Protobuf, JSON Schema). Es la <b>única fuente de verdad</b> de la estructura de los eventos y convierte acuerdos informales en contratos <b>obligatorios</b>. Ejemplos: Confluent Schema Registry, Apicurio.</p>
+<table><tr><th>Ruta de escritura (productor)</th><th>Ruta de lectura (consumidor)</th></tr>
+<tr><td>1. El serializador busca el esquema en su caché o lo registra en el registry.<br>2. El registry valida compatibilidad y devuelve un <b>ID único</b>.<br>3. En lugar de mandar el esquema en texto, el mensaje lleva un <b>prefijo de 5 bytes</b> (1 byte «mágico» + 4 bytes del ID) seguido del payload binario.</td><td>1. El deserializador lee el ID de 5 bytes del encabezado.<br>2. Busca la definición en su caché local o la pide al registry.<br>3. Deserializa los bytes con ese esquema.</td></tr></table>
+<p><b>Cinco beneficios arquitectónicos:</b></p>
+<ol><li><b>Menor sobrecarga de red y disco:</b> 5 bytes en vez del esquema completo → más throughput, menos I/O.</li>
+<li><b>Gatekeeping en la ruta de escritura:</b> si el productor intenta publicar datos malformados o un esquema que viola la política de compatibilidad, el registry lanza una excepción y <b>bloquea la escritura</b>. Los datos erróneos nunca llegan a los consumidores. (Esta es la idea más importante: el error se detecta <i>en el origen</i>, no en producción.)</li>
+<li><b>Descubrimiento y autoservicio:</b> la API REST o UI del registry permite explorar productos de datos e inspeccionar campos sin coordinarse con el equipo productor.</li>
+<li><b>Documentación autoactualizada:</b> los doc strings viven dentro del esquema activo; son más confiables que wikis estáticos.</li>
+<li><b>Generación de código tipado:</b> herramientas como avro-tools o buf compilan clases nativas y reemplazan mapas genéricos propensos a errores.</li></ol>
+
+<h4>9. Evolución de esquemas: compatibilidad</h4>
+<p>Regla mnemotécnica: el nombre del modo dice <b>hacia dónde mira el consumidor nuevo/viejo</b>.</p>
+<table><tr><th>Modo</th><th>Definición precisa</th><th>Orden de despliegue</th><th>Cambios permitidos</th></tr>
+<tr><td><b>BACKWARD</b></td><td>Un consumidor con el esquema <b>nuevo</b> puede leer datos escritos con el esquema <b>anterior</b> («el nuevo mira hacia atrás»).</td><td><b>Consumidores primero</b>, luego productores.</td><td>Eliminar un campo; añadir un campo <b>con valor por defecto</b>.</td></tr>
+<tr><td><b>FORWARD</b></td><td>Un consumidor con el esquema <b>anterior</b> puede leer datos escritos con el esquema <b>nuevo</b> («el viejo puede leer el futuro»).</td><td><b>Productores primero</b>, luego consumidores.</td><td>Añadir campos (el consumidor viejo los ignora); eliminar campos <b>opcionales</b>.</td></tr>
+<tr><td><b>FULL</b></td><td>BACKWARD + FORWARD a la vez, entre versiones consecutivas.</td><td><b>Cualquier orden</b> — útil cuando los despliegues de distintos equipos son impredecibles.</td><td>Solo añadir o eliminar campos <b>opcionales con valor por defecto</b>.</td></tr></table>
+<ul><li><b>No transitivo vs. transitivo:</b> los modos «normales» validan la nueva versión solo contra la <b>inmediatamente anterior</b> (v3 vs v2). Los <b>_TRANSITIVE</b> validan contra <b>todas</b> las versiones históricas (v3 vs v2 y v1).</li>
+<li><b>FULL_TRANSITIVE = estándar de oro:</b> es la garantía más robusta para <b>reprocesar años de historia</b> sin fallas de deserialización, porque cualquier versión puede leer cualquier dato.</li></ul>
+<p><b>Gestión de cambios disruptivos (cuando de verdad hay que romper):</b></p>
+<ol><li><b>Diseño y revisión:</b> el esquema candidato se propone por <b>pull request</b> y lo aprueban los consumidores.</li>
+<li><b>Producción dual (recomendada):</b> durante una ventana de migración se publica a la vez en el flujo viejo (marcado <b>OBSOLETO</b>) y en el nuevo; los consumidores migran a su ritmo.</li>
+<li><b>Reprocesamiento histórico:</b> retroceder offsets o tomar un snapshot del almacén interno para poblar retroactivamente el flujo v2.</li></ol>
+
+<h4>10. Caso Retail-Core (taller)</h4>
+<p><b>Situación:</b> <code>InventoryService</code> publica un evento <b>delta</b> en JSON plano sin esquema: <code>{"productId":"X123","stockChange":-2}</code>. <code>PurchasingService</code> lo usa para decidir reabastecimiento y falla constantemente.</p>
+<ul><li><b>Falla 01 – Ausencia de contrato (ruptura silenciosa):</b> el equipo de inventarios renombra <code>stockChange</code> a <code>delta</code> sin avisar. Como no hay Schema Registry, no hay gatekeeper en la ruta de escritura y el cambio destructivo llega a producción sin bloquearse.</li>
+<li><b>Falla 02 – Evento sin estado (consulta síncrona de retorno):</b> el delta dice el cambio, no el total. El consumidor debe consultar la BD/API de inventarios para conocer el stock → satura sus APIs; reaparecen el acoplamiento punto a punto y la disponibilidad invertida.</li>
+<li><b>Solución esperada:</b> (1) rediseñar a ECST con el stock total y campos obligatorios; (2) esquema formal (Avro/JSON Schema) con tipado fuerte; (3) compatibilidad FULL (idealmente FULL_TRANSITIVE). Si un junior elimina <code>productId</code> (campo requerido sin default), el registry rechaza el registro de la nueva versión y el productor no puede publicar: el error se detecta en la ruta de escritura, no en producción.</li></ul>
+
+<div class="thesis"><b>Trampas de examen S10</b><ul>
+<li>El orden está garantizado <b>por partición</b>, no en todo el tópico.</li>
+<li>Leer del log <b>no</b> borra el evento (eso lo hace una cola).</li>
+<li>BACKWARD ⇒ despliegas <b>consumidores primero</b>; FORWARD ⇒ <b>productores primero</b>. Es fácil invertirlos.</li>
+<li>Compactar ≠ borrar por TTL: la compactación es <b>por clave</b>.</li>
+<li>El delta no es «malo»: es bueno <b>dentro</b> del dominio. Lo malo es usarlo <b>entre</b> dominios.</li>
+<li>Esquema ≠ contrato: el contrato incluye dueño, SLO, evolución, seguridad y gestión de cambios.</li></ul></div>
+</div>
+
+<!-- ===================== S11 ===================== -->
+<div class="card" id="r11"><h3><span class="tag t11">S11</span>Arquitectura Orientada a Eventos II — Plataforma y gobierno</h3>
+
+<h4>1. Los planos de la plataforma de datos</h4>
+<ul><li><b>Plano de datos (Event Mesh):</b> los brokers que <b>mueven</b> los eventos (Kafka, etc.). Envían <i>telemetría</i> hacia arriba.</li>
+<li><b>Plano de control (Event Manager):</b> el que <b>configura y gobierna</b> los brokers. Tiene dos bloques: <i>Broker Management</i> (ownership, cuotas, topología, metadatos/etiquetas, ACLs y RBAC, dependencias) y <i>Schema Registry</i> (gestión de esquemas y notificación de evolución).</li>
+<li><b>Plano de orquestación:</b> encima de ambos, coordina el flujo de trabajo de equipos y herramientas.</li></ul>
+<p class="mut">Analogía: el plano de datos es la red de carreteras; el plano de control es la autoridad de tránsito que decide quién circula, por dónde y con qué reglas.</p>
+
+<h4>2. Modelo de madurez de la plataforma de eventos (3 niveles)</h4>
+<p><b>Nivel 1 – MVP (inversión mínima).</b> <i>Propósito:</i> dar valor validado e inmediato a desarrolladores y analistas, recoger retroalimentación y probar hipótesis <b>sin sobreingeniería</b> antes de entender a los usuarios. Cuatro componentes:</p>
+<table><tr><th>Componente</th><th>Qué hace</th><th>Detalle</th></tr>
+<tr><td><b>Event Broker</b></td><td>Motor de ejecución: aloja los logs físicos que son la fuente única de verdad entre dominios.</td><td>Kafka estándar, idealmente SaaS/PaaS gestionado.</td></tr>
+<tr><td><b>Schema Registry</b></td><td>Actúa como «webhook de cumplimiento» en la ruta de escritura: bloquea en el origen todo evento que viole el contrato.</td><td>Validación automática; ID en el encabezado.</td></tr>
+<tr><td><b>Catálogo básico</b></td><td>Una <b>hoja de cálculo compartida</b> en la nube. Impone la disciplina de catalogar sin construir APIs.</td><td>Columnas: producto, owner, tópico + URI, SLA, calidad, PII.</td></tr>
+<tr><td><b>Conectores</b></td><td>Liberan datos de sistemas existentes sin integraciones frágiles ni scripts JDBC manuales.</td><td>Source (traen datos al broker) / Sink (los llevan a un destino). <b>SMTs</b> (Single Message Transforms) para, p. ej., ocultar PII.</td></tr></table>
+
+<p><b>Flujo de ejecución del MVP (6 pasos):</b></p>
+<ol><li><b>Conector y permisos</b> (automático): el dueño crea un conector de origen (p. ej. <b>Debezium</b>) con permiso de lectura sobre una tabla: ingesta sin código.</li>
+<li><b>Registro del esquema</b> (automático): el conector infiere el esquema; el registry valida compatibilidad y devuelve un ID que se guarda en caché.</li>
+<li><b>Ingesta CDC</b> (automático): se lee el <b>log de escritura anticipada</b> (WAL, write-ahead log) de la BD, se serializa a binario y se anexa al tópico particionado.</li>
+<li><b>Alta en el catálogo</b> (<b>manual</b>): los datos ya fluyen pero son «invisibles»; el dueño inscribe el stream en el catálogo con sus metadatos obligatorios.</li>
+<li><b>Vínculo al esquema</b> (manual): la URI en el catálogo apunta a la API REST del registry → documentación autoactualizable por campo y tipo.</li>
+<li><b>Consumo desacoplado:</b> un sink connector sin código, o procesamiento nativo con clases generadas desde el esquema.</li></ol>
+<ul><li><b>Optimización del payload:</b> <code>[5 bytes ID de esquema] + [payload binario]</code>; el esquema textual nunca viaja con cada registro.</li>
+<li><b>Sustrato de doble propósito:</b> el Schema Registry es a la vez <b>serializador operativo</b> (máquinas) y <b>herramienta de descubrimiento humano</b> (responde «¿cuál es el formato exacto de los datos en este stream?»).</li></ul>
+
+<p><b>Habilitar otros productores — de la liberación de datos al diseño event-first:</b></p>
+<table><tr><th></th><th>Inicialización por ingesta (conectores CDC)</th><th>Publicador nativo (microservicio event-first)</th></tr>
+<tr><td>Cómo</td><td>Rastrea los logs de transacciones de la BD.</td><td>El microservicio ejecuta su lógica y formula un evento público depurado; escribe directo al broker.</td></tr>
+<tr><td>Ventaja</td><td>Libera el estado <b>sin reescribir</b> el código heredado.</td><td>El equipo es propietario absoluto de su bounded context.</td></tr>
+<tr><td>Desventaja</td><td>Estrategia <b>reactiva</b>: el esquema público queda acoplado al diseño relacional privado (tus columnas se vuelven el contrato).</td><td>Requiere desarrollo.</td></tr></table>
+<p>Qué cambia con el publicador nativo: <b>control semántico</b> (el dueño diseña el modelo público y responde por la compatibilidad), <b>serialización del lado cliente</b> (clases generadas, sin conector) y <b>contrato aplicado en origen</b> (esquema local → registry → ID → prefijo → evento binario → broker).</p>
+
+<p><b>Nivel 2 – De la improvisación a la estandarización.</b> <i>Detonantes:</i> las hojas de cálculo se desincronizan; sin permisos, los streams quedan expuestos; sin identidad de servicio no hay coordinación segura. Componentes:</p>
+<ol><li><b>Catálogo de metadatos integral</b> (Apache Atlas, Amundsen): modela relaciones entre personas, equipos, apps, brokers y esquemas; portal de búsqueda.</li>
+<li><b>Servicio centralizado de autoservicio:</b> consola única para publicar, actualizar o deprecar streams y solicitar acceso al dueño.</li>
+<li><b>Identidades estandarizadas:</b> enlaza repositorio, cloud y broker — la cuenta de servicio del código se mapea a su identidad en el stream.</li>
+<li><b>Controles de acceso básicos:</b> WRITE para productores, READ para consumidores; <i>pero</i> roles y ACLs en los backends aún se configuran <b>manualmente</b>.</li>
+<li><b>Procesamiento de stream administrado:</b> más allá de conectores — unir, agregar y emitir productos de datos refinados para consumidores.</li></ol>
+
+<p><b>Nivel 3 – Gobernanza programática y autoservicio.</b> <i>Detonante:</i> la configuración manual de ACLs, cuentas de servicio y recursos se vuelve un <b>cuello de botella crítico</b>. <i>Respuesta:</i> entrelazar identidades, servicios, procesos y productos en operaciones <b>sin intervención manual</b>.</p>
+<ul><li><b>A · IAM unificado:</b> OAuth2 + OIDC como estándar; tokens de corta duración para humanos y servicios.</li>
+<li><b>B · Entrega integrada:</b> con un clic se crea repo Git, registry Docker, despliegue en Kubernetes, tópicos Kafka y telemetría.</li>
+<li><b>C · API programática:</b> REST/gRPC para publicar, deprecar y eliminar; auditoría de políticas antes de llegar a producción.</li>
+<li><b>D · Observabilidad de SLAs:</b> SLIs como frecuencia de escritura y «tiempo desde el último evento»; <b>consumidores sintéticos</b> (consumidores de prueba) que validan los payloads.</li>
+<li><b>E · Multirregión y multicloud:</b> replicación programática con metadatos en el grafo de dependencias para auditoría.</li>
+<li><b>Cumplimiento obligatorio:</b> autenticación y autorización operan como <b>gateway programático</b> en las rutas de lectura y escritura.</li></ul>
+
+<h4>3. Gobierno avanzado</h4>
+<p><b>Portal de eventos</b> (ej. Solace Event Portal) — es el <b>plano de gestión</b> contra el «caos de datos».</p>
+<ul><li><b>Problema – caos de datos:</b> el alto desacoplamiento hace que tópicos, esquemas, linaje y propiedad pierdan trazabilidad entre brokers distintos (nadie sabe quién produce/consume qué).</li>
+<li><b>Respuesta – sistema de registro único:</b> une el modelado en <i>diseño</i> con la ejecución en <i>tiempo real</i>: diseñar, catalogar, aprovisionar y auditar.</li>
+<li><b>Desarrollo design-first (3 capacidades):</b> (A) <b>topología visual de dominios</b>: nodos y flujos que muestran el <b>radio de impacto</b> de cada cambio; (B) <b>código desde AsyncAPI</b>: diseño aprobado → especificación AsyncAPI (el «OpenAPI de los eventos») → generador → clases tipadas; (C) <b>diseño asistido por IA + MCP</b>: asistentes esbozan topologías desde lenguaje natural y servidores MCP exponen los diseños gobernados al IDE y a copilotos.</li></ul>
+
+<p><b>Auditoría activa en tiempo de ejecución.</b> <i>Definición:</i> observar, verificar y conciliar de forma <b>continua</b> la configuración real de brokers e infraestructura contra el diseño aprobado (esquemas, suscripciones, colas y ACLs no deben desviarse).</p>
+<ul><li><b>Diseño = despliegue:</b> las configuraciones aprobadas se despliegan automáticamente desde el portal.</li>
+<li><b>Conciliación autorrecuperable (plano de control):</b> escanea tópicos, enrutamiento y colas contra la taxonomía declarada; los <b>activos huérfanos</b> (streams sin consumidores) se marcan para eliminación. La auditoría pasa de verificación puntual a <b>ciclo continuo</b>.</li>
+<li><b>Registro a prueba de manipulación (seguridad):</b> si alguien intenta cambiar un campo inmutable (p. ej. región) → bloqueo, evento de falla y alerta; los permisos concedidos/revocados se publican como stream; audit log de quién, qué, dónde, cuándo (sin credenciales ni PII); modelos de ML detectan anomalías contra líneas base.</li></ul>
+
+<p><b>Gestión de accesos: ACL, RBAC y escritor único</b></p>
+<table><tr><th>Concepto</th><th>Definición</th></tr>
+<tr><td><b>ACL</b> (primitiva del broker)</td><td>Permiso granular <b>identidad → recurso</b>, nativo en Kafka y Pulsar. Operaciones: READ, WRITE, CREATE, DELETE, ALTER, DESCRIBE.</td></tr>
+<tr><td><b>RBAC</b> (capa superior)</td><td>Agrupa permisos en <b>roles</b> lógicos (p. ej. <code>OrderStreamPublisher</code>, <code>AnalyticsSubscriber</code>). Cambiar el rol se propaga a todas las identidades que lo tienen. Se integra con el proveedor de identidad (IdP).</td></tr>
+<tr><td><b>Principio de escritor único</b> (regla fundamental)</td><td><b>Exactamente un microservicio</b> tiene permiso WRITE sobre cada stream de salida. Protege el bounded context, evita la corrupción de datos y fija la propiedad. (Muchos pueden leer; uno solo escribe.)</td></tr></table>
+<p>Cómo se centraliza: (A) <b>identidades unificadas</b> — humanos vía OIDC/SSO con permisos por pertenencia a equipo; servicios con <b>una cuenta de servicio por microservicio (1:1)</b> que recibe las ACLs del tópico; (B) <b>portal de autoservicio</b> — buscar en catálogo → solicitar READ → el productor aprueba → el broker se configura sin scripts.</p>
+
+<p><b>Trazabilidad — «iluminar la caja negra del desacoplamiento».</b> El productor publica hechos y no sabe quién los consume; la visibilidad debe reconstruirla la plataforma:</p>
+<table><tr><th>Tipo</th><th>Cómo funciona</th></tr>
+<tr><td><b>Estática – topología por permisos</b></td><td>Sin permiso explícito no hay publicación ni consumo, así que el registro (ledger) de ACL/RBAC produce un <b>grafo de dependencias determinista</b>. Se recorre para hallar todos los ancestros y consumidores de un stream.</td></tr>
+<tr><td><b>Dinámica – OpenTelemetry</b></td><td>① el productor inyecta <code>traceparent</code> en el header → ② el contexto se propaga salto a salto → ③ el Collector agrupa spans → ④ DAG en vivo con latencia, throughput y errores. Backends: Tempo, Jaeger, Zipkin.</td></tr>
+<tr><td><b>Operativa – gobierno y eficiencia</b></td><td><b>Detección de huérfanos</b> (tópicos sin ACLs de consumo o servicios que nadie lee → retiro) e <b>Índice de Reutilización</b> (cuántos equipos consumen cada producto; desincentiva pipelines redundantes).</td></tr></table>
+
+<h4>4. Estandarizar la experiencia del desarrollador</h4>
+<p><b>Pluggable Message Brokers (brokers conectables)</b> — desacoplar el código de la infraestructura de mensajería.</p>
+<ul><li><b>Problema del SDK directo:</b> (1) <i>carga cognitiva</i>: el dev lidia con APIs de bajo nivel, particiones y errores en vez de lógica de negocio; (2) <i>acoplamiento código–infra</i>: cambiar de broker exige reprobar y redesplegar; (3) <i>dispersión de entornos</i>: local, pruebas y producción con mensajerías distintas.</li>
+<li><b>Patrón sidecar + API uniforme:</b> el microservicio solo tiene lógica de dominio y habla <b>HTTP a localhost</b> con una API Pub/Sub; el <b>sidecar</b> (proceso que corre junto al contenedor en el mismo Pod) se conecta al broker real (Kafka, RabbitMQ, Redis Streams). URL, secretos, concurrencia y límites se declaran fuera de banda en <b>componentes declarativos</b>. El sidecar envuelve el payload en <b>CloudEvents</b>.</li>
+<li><b>Regla 95/5:</b> el <b>95%</b> de los casos es pub/sub básico con entrega <i>at-least-once</i> → usa la API conectable y maximiza la portabilidad. El <b>5%</b> que necesita funciones propietarias del broker se aísla en un <b>servicio adaptador dedicado</b>.</li></ul>
+
+<p><b>CloudEvents 1.0 (especificación de la CNCF)</b> — una envoltura común para la interoperabilidad.</p>
+<ul><li><b>Idea central: separar contexto de contenido.</b> <i>Envoltura</i> = metadatos (remitente/source, tipo, timestamp, traza, id); <i>data</i> = el payload de dominio. Así se puede enrutar, registrar y evaluar un mensaje <b>sin abrir el payload</b> ni usar parsers propietarios por backend.</li>
+<li><b>Modo estructurado:</b> envoltura y datos se serializan <b>juntos</b> en un único documento (p. ej. JSON).</li>
+<li><b>Modo binario:</b> el cuerpo es el payload en bytes en bruto y los atributos van en los <b>encabezados del protocolo de transporte</b> (headers HTTP/Kafka); no hay que recodificar a JSON.</li>
+<li><b>Qué habilita:</b> enrutamiento por contenido con expresiones <b>CEL</b> sobre encabezados; rastreo distribuido con <b>W3C Trace Context</b> de extremo a extremo; abstracción del framework (mismos metadatos sobre Kafka, RabbitMQ o Redis); base para <b>CDEvents</b> (eventos de CI/CD para métricas DORA y SRE).</li></ul>
+
+<p><b>Dapr (Distributed Application Runtime)</b> — delega la mensajería avanzada a la infraestructura. <i>Antes:</i> SDKs, bucles de reintento y lógica del proveedor dentro del código. <i>Con Dapr:</i> el equipo de plataforma declara comportamientos empresariales:</p>
+<table><tr><th>Capacidad</th><th>Cómo</th></tr>
+<tr><td>01 Enrutamiento declarativo</td><td>Reglas en el recurso <b>Subscription</b> en vez de if/else en el código.</td></tr>
+<tr><td>02 Cartas muertas y resiliencia</td><td>Mensajes envenenados (que fallan siempre) van a un <b>DLT</b> (dead-letter topic) aunque el broker no lo soporte; reintentos y circuit breaking.</td></tr>
+<tr><td>03 Multi-inquilino</td><td><code>consumerID: "{namespace}"</code> prefija tópicos y grupos con el namespace sin tocar código.</td></tr>
+<tr><td>04 Alcance y salvaguardas</td><td><code>scopes</code> limita qué app-id puede publicar o suscribirse; <code>allowedTopics</code> evita la creación de tópicos descontrolados.</td></tr>
+<tr><td>05 TTL</td><td><code>ttlInSeconds</code> descarta mensajes expirados y evita congestión cuando no hay consumidores.</td></tr>
+<tr><td>06 Operaciones masivas</td><td>APIs bulk y batching con <code>maxMessagesCount</code> y <code>maxAwaitDurationMs</code>.</td></tr></table>
+<p><b>Laboratorio Dapr (4 fases, Kind + Python):</b> (1) arquitectura sidecar — clúster Kind y Dapr vía Helm; el <b>sidecar-injector</b> es un <b>MutatingWebhook</b> que inyecta el sidecar al Pod; (2) componentes declarativos — Redis como broker (<code>pubsub-redis.yaml</code>); migrar a Kafka o SNS/SQS solo cambia <code>spec.type</code> y <code>spec.metadata</code>; (3) Pub/Sub y CloudEvents — Flask + Requests contra el sidecar, Pod 2/2 Ready; se observan <code>id</code>, <code>source</code>, <code>type</code> y <code>traceparent</code> añadidos sin instrumentación manual; (4) gobernanza — TTL de 120 s con el suscriptor en 0 réplicas y consumerID con namespace.</p>
+
+<div class="thesis"><b>Trampas de examen S11</b><ul>
+<li>El catálogo del MVP es una <b>hoja de cálculo</b>, no Atlas/Amundsen (esos son Nivel 2).</li>
+<li>Nivel 2 ya tiene WRITE/READ, pero las ACLs siguen siendo <b>manuales</b>; la automatización completa es Nivel 3.</li>
+<li>El paso de alta en el catálogo del MVP es <b>manual</b>.</li>
+<li>CDC acopla el esquema público al <b>modelo relacional privado</b>; por eso se evoluciona a publicador nativo.</li>
+<li>ACL es la primitiva del broker; RBAC es la capa de roles encima.</li>
+<li>Escritor único = un <b>productor</b> por stream, no un consumidor.</li>
+<li>Estructurado = todo en el body; binario = atributos en headers.</li></ul></div>
+</div>
+
+<!-- ===================== S12 ===================== -->
+<div class="card" id="r12"><h3><span class="tag t12">S12</span>Estructura organizacional — Team Topologies</h3>
+
+<h4>1. Ley de Conway (Melvin Conway, 1968)</h4>
+<div class="thesis">«Las organizaciones que diseñan sistemas están limitadas a producir diseños que son <b>copias de sus estructuras de comunicación</b>.»</div>
+<ul><li><b>Fuerza homomórfica:</b> la forma de la organización se «imprime» en la forma del software. Ej.: si hay equipo UI, equipo Back-end y equipo DBA separados, saldrán varios front-ends sobre un back-end acoplado y una <b>BD monolítica compartida</b>… aunque en papel se haya planificado microservicios.</li>
+<li><b>Formulación moderna (Ruth Malan):</b> «Si la arquitectura del sistema y la de la organización están en conflicto, <b>la organización gana</b>.»</li>
+<li><b>Ejemplos clásicos:</b> <i>compilador de 4 pasadas</i> — cuatro grupos producen un compilador de cuatro pasadas (E. Raymond); <i>más comunicación ≠ mejor</i> — la red «todos con todos» produce monolitos enredados; <i>pantano de pegamento</i> — sin abstracciones claras, el código «pegamento» satura la carga cognitiva.</li></ul>
+
+<h4>2. Maniobra inversa de Conway (James Lewis, 2015; popularizada en <i>Accelerate</i>)</h4>
+<ul><li><b>Definición:</b> en vez de imponer un diseño técnico a los equipos existentes, se <b>diseñan deliberadamente los equipos y sus fronteras de comunicación</b> para que coincidan con la arquitectura objetivo. Si quiero microservicios independientes, necesito equipos independientes.</li>
+<li><b>Antes vs. después:</b> antes, productos A–D dependen de un equipo DBA central (cuello de botella) y una BD monolítica; después, equipos A–D cada uno con su servicio y su <b>BD propia</b>, con la capacidad de datos <b>dentro</b> del equipo multifuncional → los microservicios emergen naturalmente.</li>
+<li><b>Ejecución evolutiva</b> (el código heredado resiste las nuevas fronteras): 01 reestructurar equipos → 02 colaborar y facilitar para descubrir límites → 03 ajustar las API de equipo → 04 fijar contratos X-as-a-Service.</li></ul>
+
+<h4>3. Team Topologies (Skelton y Pais): 4 tipos de equipo</h4>
+<p>Es un <b>vocabulario común</b> y, junto con la ingeniería de plataformas, el mecanismo operativo para ejecutar la maniobra inversa a escala.</p>
+
+<p><b>a) Equipo alineado al stream (stream-aligned)</b> — <i>unidad primaria de entrega.</i></p>
+<ul><li><b>Definición:</b> equipo <b>multifuncional</b>, de <b>larga duración</b>, alineado a <b>un único flujo continuo de valor</b>, con propiedad <b>de extremo a extremo</b> («tú lo construyes, tú lo operas»).</li>
+<li><b>Proporción:</b> entre 6:1 y 9:1 frente a los demás tipos de equipo (la mayoría de equipos deben ser de este tipo).</li>
+<li><b>Formas que adopta un stream:</b> producto o servicio, arquetipo de usuario, customer journey, área de negocio o región, cumplimiento normativo. (⚠ No una <i>capa técnica</i>.)</li>
+<li><b>Capacidades dentro del equipo:</b> producto y viabilidad, diseño y UX, arquitectura y desarrollo, infraestructura y despliegue, métricas y telemetría, seguridad de aplicaciones.</li>
+<li><b>Comportamientos esperados:</b> flujo constante y predecible, retroalimentación rápida, enfoque experimental, cero hand-offs bloqueantes, tiempo para la deuda técnica, autonomía/maestría/propósito. Referente: «equipo de dos pizzas» de Amazon.</li></ul>
+
+<p><b>b) Equipo habilitador (enabling)</b> — <i>capacitar, no ejecutar.</i></p>
+<ul><li><b>Misión:</b> especialistas que cierran la <b>brecha de capacidades</b> de los equipos de stream, reducen su carga cognitiva y los llevan a la autonomía.</li>
+<li>«Un equipo de habilitación debe <b>planificar su propia extinción</b> desde el primer día» (Robin Weston): su éxito es que ya no lo necesiten.</li>
+<li><b>Comportamientos:</b> a la vanguardia (evalúa herramientas antes de que urjan), curaduría del saber (difunde buenas y malas noticias técnicas), <b>walking skeletons</b> (implementaciones de referencia mínimas de punta a punta), liderazgo servicial (sin «torres de marfil» ni mandatos).</li>
+<li><b>Reconversión de silos:</b> los equipos centralizados de DBA o QA pasan de <i>ejecutar tickets</i> a <i>dar mentoría</i> en esquemas y pruebas automatizadas.</li></ul>
+
+<p><b>c) Equipo de subsistema complicado (complicated-subsystem)</b> — <i>aislar la complejidad extrema.</i></p>
+<ul><li><b>Misión:</b> poseer y evolucionar un área de <b>gran complejidad matemática, técnica o algorítmica</b> para quitarle esa carga cognitiva a los equipos de stream. Integrar a esos especialistas escasos en cada equipo no es rentable ni práctico.</li>
+<li><b>Criterio que lo distingue:</b> ✕ <i>equipo de componentes</i> = se forma porque un componente <b>se comparte</b> → genera colas y hand-offs. ✓ <i>subsistema complicado</i> = se forma <b>solo</b> por carga cognitiva y complejidad. Deben ser <b>muy pocos</b>.</li>
+<li><b>Ejemplos:</b> códecs de audio/video, modelos financieros y de riesgo, motores de ML/IA, reportes regulatorios, simulación física y geoespacial.</li>
+<li>Expone una <b>API clara de autoservicio</b> con roadmap guiado por los streams. Ciclo: descubrimiento en colaboración estrecha → estabilización como servicio.</li></ul>
+
+<p><b>d) Equipo de plataforma (platform)</b> — <i>sustrato de la autonomía.</i></p>
+<ul><li><b>Definición:</b> construye la plataforma interna de desarrollo (<b>IDP</b>) y los <b>golden paths</b>: infraestructura de autoservicio (aprovisionamiento, redes, CI/CD, escaneo de seguridad, telemetría) que <b>reduce la carga cognitiva</b> de los equipos de stream, <b>sin colas de tickets</b>.</li>
+<li><b>Gestionada como producto:</b> roadmap con prácticas de producto, arquetipos de desarrollador y sus dolores, prototipado con streams en fase alfa, <b>dogfooding</b> (usa sus propios servicios), métricas de adopción y salud.</li>
+<li><b>«Turtles all the way down»:</b> la plataforma tiene <b>topologías internas</b>: arriba, wrappers y portales con DevEx unificada; en medio, equipos anidados (streams de plataforma como logging o API de entornos, y subsistemas); abajo, hardware y primitivas de cloud.</li></ul>
+
+<h4>4. Los 3 modos de interacción</h4>
+<table><tr><th></th><th>Colaboración</th><th>X-as-a-Service</th><th>Facilitación</th></tr>
+<tr><td><b>Propósito</b></td><td>Descubrir juntos (alta incertidumbre, tecnologías emergentes)</td><td>Consumir una capacidad estable sin coordinar</td><td>Transferir una capacidad (enseñar), no hacer el trabajo</td></tr>
+<tr><td><b>Ancho de banda</b></td><td>Alto (diseño conjunto, mobbing, pair programming)</td><td>Bajo (sin reuniones diarias)</td><td>Medio, en la trinchera (talleres, pairing, walking skeletons)</td></tr>
+<tr><td><b>Fronteras</b></td><td>Difusas; responsabilidad conjunta</td><td>Claras: proveedor posee el servicio, consumidor su lógica</td><td>Claras: solo el receptor posee el código</td></tr>
+<tr><td><b>Duración</b></td><td>Acotada e intermitente (pausas evitan el pensamiento grupal, E. Bernstein)</td><td>Permanente</td><td>Semanas a pocos meses; concluye</td></tr>
+<tr><td><b>Costo/impuesto</b></td><td>Carga cognitiva alta y entrega temporalmente menor; efecto Conway: comunicación mezclada → código acoplado</td><td>Innovación más lenta (concesión deliberada por estabilidad)</td><td>Pocos equipos a la vez (profundidad sobre asesoría superficial)</td></tr>
+<tr><td><b>Combinaciones típicas</b></td><td>Stream + subsistema (integrar un algoritmo); Stream + plataforma (codesarrollar capacidad nueva); Stream + stream (dominios superpuestos)</td><td>Plataforma → muchos streams (uno a muchos)</td><td>Habilitador → stream (pruebas, CD, cloud); plataforma → stream (adoptar nuevas API); stream maduro → stream nuevo</td></tr></table>
+<ul><li><b>Requisitos del proveedor en X-as-a-Service:</b> DevEx intuitivo (fácil de probar y depurar), documentación enfocada en tareas, <b>SemVer como promesa</b> del equipo, evolución curada en un roadmap holístico, no exponer detalles internos.</li>
+<li>⚠ <b>Colaboración perpetua</b> con la plataforma requiere justificación: suele <b>enmascarar deficiencias</b> de la plataforma (si siempre necesitas ayuda, la plataforma no es autoservicio).</li>
+<li><b>Facilitación – reglas:</b> ✕ no toma tickets ni escribe código de producción; ✕ no opera los sistemas del receptor; ✓ solo el receptor posee el código → no se difuminan fronteras.</li></ul>
+
+<h4>5. La API de equipo</h4>
+<ul><li><b>Definición:</b> un patrón de comportamiento <b>explícito y bien definido</b> entre equipos (endpoints, versionado, documentación, canales de comunicación, roadmap), en lugar de comunicación informal por canales no gestionados.</li>
+<li><b>Tres efectos:</b> <i>hábitos predecibles</i> (aclaran si dos equipos codiseñan, consumen un componente estable o reciben orientación); <i>propiedad delimitada</i> (fronteras limpias, sin superposición en la propiedad del código); <i>señales sensoriales</i> (las interacciones incómodas son <b>señal</b> de fronteras mal ubicadas o capacidades faltantes).</li>
+<li><b>Evolución «descubrir para establecer»:</b> Colaboración (I+D, fronteras difusas) → X-as-a-Service (API limpia, bajo ancho de banda), con Facilitación de por medio.</li>
+<li>Va <b>más allá del organigrama</b> (que muestra jerarquía, no flujo de valor): moldea la comunicación → y por Conway, la arquitectura.</li></ul>
+
+<h4>6. Patrones de equipo contextuales</h4>
+<p>«No hay topología correcta, solo topología adecuada al contexto»: depende de escala, madurez técnica/cultural y complejidad. Son <b>instantáneas, no destinos</b> (al madurar o escalar deben evolucionar). Evitar antipatrones ad hoc (silos reactivos tras incidentes, rotación constante en equipos de proyecto).</p>
+<table><tr><th>Patrón</th><th>Qué es</th><th>Requisito</th><th>Modo de falla</th></tr>
+<tr><td>A · Equipos de funcionalidades</td><td>Multifuncionales, transversales a los componentes; llevan una feature de la idea a producción.</td><td>Alta madurez: pruebas automatizadas, CI, regla del boy scout.</td><td>En baja madurez, tocar bases de código compartidas genera atajos, deuda y pérdida de propiedad. (Ericsson: roles «conductos de comunicación».)</td></tr>
+<tr><td>B · Equipos de producto</td><td>Dueños del ciclo de vida completo de un producto.</td><td>Soporte no bloqueante: infra, pipeline y pruebas como autoservicio.</td><td>Sin plataforma, esperan dependencias y la entrega se atasca. (Microsoft Visual Studio: de ciclos de meses a cadencia diaria/semanal consumiendo Azure «como servicio».)</td></tr>
+<tr><td>C · Equipos de cloud</td><td>Diseñan procesos, políticas, plantillas y guardrails; los equipos de producto aprovisionan en autoservicio.</td><td>División clara de responsabilidades.</td><td>✕ «<b>Silo renombrado</b>»: Operaciones con otro nombre que aprovisiona cloud por tickets, con los mismos retrasos.</td></tr>
+<tr><td>D · Equipos SRE</td><td>Ingeniería de software aplicada a operaciones (Google) para reducir trabajo manual y equilibrar velocidad/estabilidad con <b>SLO + presupuesto de error</b>. Soporte opcional, escala con el uso.</td><td>Etapas: 1 creación (la app construye y opera sola) → 2 crece (SRE orienta y habilita) → 3 escala (SRE colabora y co-ejecuta) → 4 degrada (bajo presupuesto de error o menor escala: la operación <b>vuelve al equipo</b>).</td><td>—</td></tr></table>
+<p><b>Antipatrón «Equipo DevOps» independiente:</b> un equipo permanente que despliega y escribe scripts para otros crea un <b>nuevo silo</b> y una dependencia dura (caso Accenture, salud: las herramientas DevOps se volvieron un silo aislado). <b>Viaje correcto</b> (TransUnion, 4 años): Ops-as-IaC → IaC junto a los desarrolladores → evangelistas DevOps temporales entre Dev y Ops → equipos integrados producto + plataforma (los equipos puente se vuelven obsoletos).</p>
+
+<h4>7. La transición como viaje sociotécnico (no como reorganización)</h4>
+<ul><li><b>Diagnóstico – punto de partida:</b> el <b>equipo es la unidad</b> (no individuos ni proyectos): equipos estables y multifuncionales de <b>5 a 9 personas</b> (límites de Dunbar). <i>Detonantes:</i> entrega más lenta, software inabarcable, hand-offs entre silos.</li>
+<li><b>Mapa de carga cognitiva:</b> clasificar cada dominio en <b>simple</b>, <b>complicado</b> o <b>complejo</b>. Regla: un equipo <b>nunca debe poseer más de un dominio complejo</b>.</li>
+<li><b>Fase 1 – convertir a las 4 topologías:</b> Operaciones/Infraestructura → plataforma de autoservicio; QA/DBA/Herramientas → habilitadores con tiempo límite; equipos de componentes → streams o sub-equipos de plataforma; componente de nicho profundo → subsistema complicado.</li>
+<li><b>Fase 2 – contextos delimitados y planos de fractura:</b> <b>DDD + Event Storming</b> para fronteras según el dominio de negocio; <b>planos secundarios</b> de fractura (normativa, cadencia de cambio, riesgo, rendimiento, geografía); <b>un solo dueño</b>: cada servicio y repositorio pertenece a exactamente un equipo.</li>
+<li><b>Fase 3 – API de equipo y maniobra inversa:</b> publicar la API de equipo (endpoints, SemVer, documentación, canales, roadmap); reconfigurar equipos para anticipar la arquitectura objetivo; restringir la comunicación «todos con todos».</li>
+<li><b>Fase 4 – Plataforma viable más ligera (TVP, Thinnest Viable Platform):</b> envolver primitivas (Kubernetes, cloud) en abstracciones ligeras; plataforma como producto con DevEx para la adopción voluntaria; rutas doradas para CI/CD, logging, métricas y seguridad. (Una TVP puede ser tan simple como una página wiki con estándares.)</li>
+<li><b>Fase 5 – Evolución dinámica:</b> descubrir para establecer (colaboración y facilitación → X-as-a-Service); <b>percepción organizacional</b>: usar la fricción como señal de diagnóstico de fronteras y plataforma.</li></ul>
+
+<h4>8. Caso Legacy-Pay (taller)</h4>
+<p><b>Situación:</b> empresa de pagos, <b>150 ingenieros</b>, <b>1 despliegue al mes</b>. 5 equipos de desarrollo (back/front) escriben código pero no pueden desplegar, aprovisionar ni cambiar esquemas. Tres hand-offs:</p>
+<ul><li><b>Silo de BD (3 DBAs):</b> centralizan todo cambio a la BD relacional monolítica; ticket en Jira con <b>SLA de 2 semanas</b>.</li>
+<li><b>Silo de Operaciones (10 SysAdmins):</b> scripts manuales para llevar a producción; ventana los viernes por la noche.</li>
+<li><b>Silo de Seguridad (5 auditores):</b> revisión estática del código un día antes del pase; rechazan con frecuencia entregables completos.</li></ul>
+<p><b>Diagnóstico Conway:</b> un único equipo DBA obliga a que todos compartan una BD monolítica → aunque se quiera microservicios, saldrá un sistema acoplado.</p>
+<p><b>Rediseño:</b> 5 equipos → <b>stream-aligned</b> end-to-end (con su propia capacidad de datos); 10 SysAdmins → <b>plataforma</b> (portal de autoservicio que elimina los pases manuales); 5 auditores → <b>habilitador DevSecOps</b> vía <b>facilitación</b> (seguridad temprana y automatizada, no control de última hora); motor transaccional core → <b>¿subsistema complicado?</b> solo si su complejidad lo justifica. Interacción plataforma–streams: <b>colaboración</b> para descubrir las necesidades del portal → <b>X-as-a-Service</b> al estabilizarse.</p>
+
+<div class="thesis"><b>Trampas de examen S12</b><ul>
+<li>Subsistema complicado ≠ equipo de componentes (lo define la complejidad, no el «se comparte»).</li>
+<li>El habilitador <b>no</b> escribe código de producción ni toma tickets.</li>
+<li>La colaboración es <b>temporal</b>; si es perpetua, es síntoma de un problema.</li>
+<li>La secuencia es Colaboración → X-as-a-Service (no al revés).</li>
+<li>Máximo <b>un</b> dominio complejo por equipo; equipos de <b>5–9</b>.</li>
+<li>Un «equipo DevOps» separado es un antipatrón, no una topología.</li></ul></div>
+</div>
+
+<!-- ===================== S13 ===================== -->
+<div class="card" id="r13"><h3><span class="tag t13">S13</span>Modelo operativo de la plataforma</h3>
+
+<h4>1. Plataforma como producto (PaaP)</h4>
+<p><b>Definición:</b> aplicar <b>gestión de producto</b> a la plataforma interna (IDP): los desarrolladores son <b>clientes internos</b> con flujos y dolores propios, y la plataforma debe <b>ganarse</b> su uso demostrando valor frente a las alternativas.</p>
+<table><tr><th></th><th>TI tradicional (proyectos impulsados por autoridad)</th><th>Plataforma como producto</th></tr>
+<tr><td>El desarrollador es…</td><td>«Audiencia cautiva» que consume lo que se le asigna</td><td>Cliente interno con flujos y puntos de dolor</td></tr>
+<tr><td>Quién decide</td><td>Arquitectura central, CTO u operaciones</td><td>El valor demostrado frente a las alternativas</td></tr>
+<tr><td>Qué se mide</td><td><b>Salidas (outputs):</b> SLA de tickets, uptime, fechas cumplidas</td><td><b>Resultados (outcomes):</b> carga cognitiva, lead time, CSAT/NPS, adopción voluntaria</td></tr></table>
+<ul><li><b>La ilusión de la audiencia cautiva:</b> siempre hay alternativas. Si la plataforma no sirve, aparecen <i>workarounds</i> (configuraciones manuales, scripts ad hoc), <i>shadow IT/Ops</i> (cuentas y pipelines fuera de la vista central) y <i>resistencia</i> (el mandato rígido estanca la adopción).</li>
+<li><b>Operacionalizar la mentalidad:</b> <b>descubrimiento continuo</b> (entrevistas, encuestas, observación de flujos) y <b>preferencias reveladas &gt; expresadas</b>: confiar más en la telemetría de lo que la gente <i>hace</i> que en lo que <i>dice</i> que quiere (el «caballo más rápido» de la frase atribuida a Ford).</li></ul>
+
+<h4>2. Liderazgo Two-in-a-Box (modelo dual)</h4>
+<p><b>Definición:</b> la plataforma la lideran <b>dos personas a la par</b> en «una misma caja»: un líder de producto y uno de ingeniería. Objetivo: pasar de la gestión de proyectos (plazos, volumen de tickets, hand-offs) a la <b>propiedad del producto</b>.</p>
+<table><tr><th>Gerente de Producto de Plataforma (PPM)</th><th>Líder técnico / Gerente de ingeniería (TL/EM)</th></tr>
+<tr><td>Viabilidad y ROI · estrategia del producto · deseabilidad para el desarrollador — «construir <b>lo correcto</b>»</td><td>Factibilidad técnica · arquitectura y escalabilidad · confiabilidad y calidad — «construir <b>correctamente</b>»</td></tr></table>
+<p><b>Dinámica de la dupla:</b></p>
+<ul><li><b>Fronteras claras:</b> definen juntos qué capacidades son de la plataforma y cuáles de las aplicaciones → evita el <i>scope creep</i>.</li>
+<li><b>Políticas sin fricción:</b> el PPM <b>negocia</b> con Seguridad y Legal; el TL las <b>integra como policy-as-code</b> en los pipelines.</li>
+<li><b>Rutas con vías de escape:</b> el PPM cura el 80% dominante en golden paths; el TL diseña accesos seguros a primitivas para el resto.</li></ul>
+<p><b>La tríada del producto:</b> <i>viabilidad</i> (PPM), <i>factibilidad</i> (TL/EM) y <i>deseabilidad</i> (DevEx + PPM: construir lo que el cliente desea). Una plataforma exitosa vive en la intersección de las tres.</p>
+<p><b>Antipatrón — la trampa de la reconversión:</b> renombrar al gerente de proyectos como «Platform Product Owner» sin cambiar su forma de trabajar.</p>
+<table><tr><th></th><th>Gerente de proyectos</th><th>PPM</th></tr>
+<tr><td>Enfoque</td><td>Outputs: tareas, tickets, plazos</td><td>Outcomes: adopción, lead time, MTTR, satisfacción</td></tr>
+<tr><td>Solicitudes</td><td>Las toma literales → <i>feature creep</i> y <i>tool sprawl</i> (proliferación de herramientas)</td><td>Busca el dolor subyacente → abstracción de autoservicio</td></tr>
+<tr><td>Habilidad</td><td>Mecánica de la ejecución</td><td>Descubrimiento continuo e investigación de usuarios</td></tr></table>
+<p><b>Dilema del «caballo más rápido»:</b> si un equipo pide un clúster propio, el PPM indaga el dolor real (p. ej. despliegues lentos) y lo resuelve con una abstracción, en lugar de entregar literalmente un clúster.</p>
+
+<h4>3. Curación 80/20 (principio de Pareto)</h4>
+<ul><li><b>Regla:</b> enfocar la plataforma en el <b>20% de capacidades y flujos que usa el 80% de los equipos</b>.</li>
+<li><b>Espectro de la curaduría</b> (valor vs. complejidad):
+<ul><li><b>Centro de servicios</b> = producto <i>sin</i> curaduría: acepta toda solicitud → crece en complejidad y mantenimiento.</li>
+<li><b>Producto curado</b> (el ideal) = opiniones explícitas sobre qué está dentro y qué fuera.</li>
+<li><b>Jaula dorada</b> = curaduría <i>sin</i> producto: rígida y ajena al flujo real de los equipos.</li></ul></li>
+<li><b>Golden paths (el 20% central):</b> lo correcto debe ser lo más fácil — CI/CD, entornos, contenedores y observabilidad en plantillas de autoservicio → menos carga cognitiva, foco en lógica de dominio.</li>
+<li><b>Cómo identificar el 20%:</b> mapeo del value stream (de la rama a producción); «<b>de tierra a pavimento</b>»: se pavimenta lo que ya tiene tráfico (lo que los equipos ya hacen repetidamente); resolver el problema generalizable, no la solicitud literal.</li>
+<li><b>Decir «no» a los atípicos:</b> pueden salir de la ruta, pero <b>asumiendo su propia operación</b>.</li></ul>
+
+<h4>4. La plataforma fuera de la ruta crítica</h4>
+<div class="thesis">«Si bien la plataforma debe acelerar la entrega de software, no debería estar en la ruta crítica para el éxito de los equipos: <b>siempre debe haber una forma de eludirla</b>.»</div>
+<ul><li><b>Sin bloqueos operativos:</b> si la plataforma cae, los equipos aún pueden parchear, corregir y escalar.</li>
+<li><b>Autoservicio, no gatekeeper:</b> aprobar cada servicio a mano genera colas y complejidad.</li>
+<li><b>Una vía para eludirla:</b> acceso directo a herramientas y APIs nativas si el portal falla.</li>
+<li><b>Aislamiento físico de clústeres:</b> un <b>clúster de gestión</b> (Crossplane, Argo CD, Tekton) separado del <b>clúster de aplicaciones</b> (cargas del cliente). Beneficios: <i>sin competencia</i> (picos o fugas de la plataforma no roban recursos a producción) y <i>menor blast radius</i> (un exploit en la plataforma no alcanza producción).</li>
+<li><b>Pruebas fuera de banda:</b> la ruta normal (desarrollo → QA → staging → producción) no se bloquea; las release candidates se prueban contra la <b>próxima versión de la plataforma</b> en un entorno de <b>vista previa</b>, fuera de la ruta crítica.</li>
+<li><b>Pipelines propiedad del equipo:</b> viven en el mismo repo que el código; bibliotecas compartidas con <b>SemVer</b> explícito → adopción voluntaria de nuevas versiones.</li>
+<li><b>Interfaz dual:</b> abstracciones de alto nivel (portal, CLI, REST) <b>y</b> acceso a primitivas nativas (API de Kubernetes, cloud).</li>
+<li><b>Vías de escape pragmáticas:</b> ninguna abstracción cubre el 100% de los casos; los equipos pueden desviarse a voluntad sin esperar al backlog.</li></ul>
+
+<h4>5. Adopción voluntaria: push vs. pull (modelo de madurez CNCF)</h4>
+<table><tr><th></th><th>Push — imposición extrínseca (Nivel 2 · Operacionalizado)</th><th>Pull — atracción intrínseca (Nivel 3 · Escalable)</th></tr>
+<tr><td>Motor</td><td>Mandatos, incentivos de desempeño o condiciones de financiamiento</td><td>El valor inherente: reduce la carga cognitiva diaria</td></tr>
+<tr><td>Uso</td><td>Fragmentado; dependencia de mesas de soporte</td><td>Se elige frente a scripts propios y se piden más capacidades</td></tr>
+<tr><td>Fricción / valor</td><td>Los equipos atípicos se bloquean sin poder extender</td><td>Los equipos están dispuestos a <b>financiarla (chargeback)</b></td></tr></table>
+<p><b>Modos de falla de los mandatos (apelaciones a la autoridad):</b> (1) <i>enmascaran el producto</i>: si hay que imponerla, le faltan requerimientos críticos; (2) <i>fricción y sombra</i>: workarounds e infraestructura oculta; (3) <i>rol del liderazgo</i>: el mandato es <b>esencial al inicio</b> para invertir, pero <b>insuficiente para sostener</b>.</p>
+<p><b>Ingeniería de la atracción — 4 palancas</b> (DevEx superior al scripting manual):</p>
+<ol><li><b>Más fácil:</b> más simple que el glue code y los scripts de aprovisionamiento.</li>
+<li><b>Segura por defecto:</b> escaneos, secretos, cumplimiento y telemetría ya integrados en las plantillas.</li>
+<li><b>Migración progresiva:</b> sin big-bang; convive con lo heredado y se adopta cuando la telemetría demuestra el valor.</li>
+<li><b>Sin sobrecarga cognitiva:</b> IAM, Helm y orquestadores detrás de APIs y portales → repositorio con CI/CD en minutos.</li></ol>
+<p><b>Autonomía con vías de escape:</b> <i>opt-out</i> (ruta pavimentada opcional, no jaula), <i>API en capas</i> (alto nivel para lo estándar, primitivas para el edge case; diseñada para el 80% común, no el 100% atípico), <i>confianza por libertad</i> (usarla es una elección → elimina el resentimiento).</p>
+
+<h4>6. Deuda técnica de la plataforma</h4>
+<ul><li><b>Definición:</b> el <b>costo continuo</b> de mantener el software: infraestructura, operación, actualizaciones y satisfacción. Es un <b>síntoma natural del crecimiento</b>, no necesariamente un error.</li>
+<li><b>Ciclo de vida:</b> (1) TVP «suficientemente buena» que resuelve la fricción inmediata → (2) dolores de crecimiento: decisiones válidas ayer se vuelven inadecuadas al escalar → (3) efecto bola de nieve: sin gestión, firefighting, toil operativo y burnout; no queda capacidad para nuevas funcionalidades.</li>
+<li><b>Recorridos críticos del usuario (CUJ, Critical User Journeys):</b> los flujos con los que los desarrolladores logran sus objetivos; evolucionan con la organización. Se evalúan por <b>observabilidad</b> (inicios de sesión, despliegues activos, ejecuciones de pipeline por día/semana/mes). <b>Detección de falta de uso:</b> si una capacidad no crece en uso, ¿aún justifica su ROI o la carga cognitiva que reduce?</li>
+<li><b>La deuda en el ritmo operativo:</b> revisión de deuda en cada planificación de sprint; en Kanban, la deuda va en el backlog junto a las funcionalidades; <b>capacidad garantizada</b> para deuda; aplazarla eleva el esfuerzo exponencialmente; <b>arquitectura componible</b> para retirar sin fallas en cascada.</li>
+<li><b>Checklist de obsolescencia (8 preguntas):</b> 1 <i>funcionalidad</i> (¿perdemos una capacidad necesaria?) · 2 <i>plan de transición</i> (¿ruta de migración paso a paso?) · 3 <i>naturaleza del cambio</i> (¿se reemplaza o se elimina?) · 4 <i>impacto en el usuario</i> (¿cómo afecta a los activos?) · 5 <i>perfil de mantenimiento</i> (¿demandas de soporte futuras?) · 6 <i>diferencial de costos</i> (¿brecha en infraestructura y licencias?) · 7 <i>cronograma</i> (¿fecha límite y aviso previo?) · 8 <i>ventana de superposición</i> (¿cuánto coexisten ambas?). Se acompaña de <b>comunicación proactiva</b> y <b>ADRs</b> que preservan el porqué de cada retiro.</li></ul>
+
+<h4>7. Modelo de contribución: InnerSourcing</h4>
+<ul><li><b>Problema de escala:</b> la demanda de capacidades crece más rápido que el equipo de plataforma.</li>
+<li><b>InnerSourcing:</b> aplicar prácticas de open source dentro de la empresa para que otros equipos <b>contribuyan</b> a la plataforma. Evidencia: el <b>85%</b> de los plugins de Backstage en Spotify provino de fuera del equipo central → «cultura de constructores» sin crecer proporcionalmente el equipo.</li>
+<li><b>Mecánicas:</b> repositorios abiertos (código, plantillas e issues visibles en toda la organización); golden paths descentralizados (Backstage Templates o <b>Kratix Promises</b> aportadas por los dominios).</li>
+<li><b>Flujo de contribución con controles automatizados:</b> guía de contribución (estándares, cobertura, criterios de revisión) → <b>RFC previo</b> (caso de uso, demanda amplia y por qué no bastan las APIs actuales) → <b>políticas como código</b> (pruebas automatizadas y OPA/Kyverno antes de la revisión humana) → <b>extensión aislada</b> (plugins y composiciones desacoplados, sin tocar el orquestador central).</li></ul>
+<p><b>Contribuir NO es transferir la responsabilidad:</b></p>
+<ul><li><b>Regla de propiedad de un solo equipo:</b> cada activo pertenece a exactamente un equipo. Otros envían PR; el propietario conserva el <b>veto</b>.</li>
+<li><b>Enrutamiento de alertas según el origen:</b> falla en una plantilla/script/manifiesto <b>aportado</b> → la atiende el <b>equipo de dominio propietario</b> (actualiza su kit de inicio). Interrupción del <b>núcleo</b> de la plataforma → la <b>guardia de plataforma central</b> (solo servicios centrales).</li>
+<li><b>Kits de inicio ≠ hoja de ruta:</b> la plataforma no mantiene plantillas Terraform ni wrappers de nicho de otros equipos.</li>
+<li><b>Guardias sostenibles (práctica SRE):</b> máximo <b>25%</b> del tiempo de un ingeniero en guardia y en promedio <b>≈5 alertas (pages) por semana</b>.</li></ul>
+
+<h4>8. Modelo de madurez de ingeniería de plataformas (CNCF)</h4>
+<table><tr><th>Aspecto</th><th>Nivel 1 · Provisional</th><th>Nivel 2 · Operacionalizado</th><th>Nivel 3 · Escalable</th><th>Nivel 4 · Optimizando</th></tr>
+<tr><td><b>Inversión</b></td><td>Voluntaria, sin presupuesto</td><td>Equipo dedicado como centro de costos</td><td>Como producto, justificada por ROI</td><td>Ecosistema: las áreas financian sus capacidades</td></tr>
+<tr><td><b>Adopción</b></td><td>Errática</td><td>Imposición extrínseca (push)</td><td>Atracción intrínseca (pull)</td><td>Participativa (inner sourcing)</td></tr>
+<tr><td><b>Interfaces</b></td><td>Scripts y tickets</td><td>Herramientas estándar con soporte</td><td>Autoservicio: API, CLI, portal</td><td>Servicios integrados y transparentes</td></tr>
+<tr><td><b>Operaciones</b></td><td>Bajo petición, reactiva</td><td>Rastreo central con cuellos de botella</td><td>Habilitación central, entrega continua</td><td>Servicios administrados, cero downtime</td></tr>
+<tr><td><b>Medición</b></td><td>Ad hoc, anecdótica</td><td>Recopilación consistente</td><td>Perspectivas: DORA y satisfacción</td><td>Cuantitativa y cualitativa: SLO</td></tr></table>
+<p><b>El nivel 4 no es un objetivo universal:</b> se mapea cada aspecto por separado, se apunta al <b>nivel adyacente</b> y se invierte donde el impacto comercial lo justifique.</p>
+
+<h4>9. Caso Logistech (taller)</h4>
+<p><b>Situación:</b> empresa de logística; el CTO <b>impuso</b> que los 30 equipos desplieguen por la nueva IDP; 6 meses después:</p>
+<ul><li><b>Crisis 1 – Cuello de botella:</b> un equipo de plataforma compuesto <b>solo por ingenieros</b> (sin PPM) intenta soportar cada caso particular de los 30 equipos.</li>
+<li><b>Crisis 2 – Ruta crítica:</b> una caída de <b>4 horas</b> del portal impidió ejecutar CI/CD a todos: se detuvo la entrega de toda la compañía.</li>
+<li><b>Crisis 3 – Shadow IT:</b> para evitar la rigidez, los equipos de datos construyen en secreto sus propios scripts de despliegue.</li></ul>
+<p><b>Respuesta esperada:</b> Bloque 1 — Two-in-a-Box (PPM + TL), solo dos golden paths oficiales en el trimestre (p. ej. Node.js y PostgreSQL), política para que datos salga de la ruta sin penalización asumiendo su operación. Bloque 2 — mecanismo de fallback: si Backstage o la API del plano de control caen, los equipos compilan, prueban y despliegan con sus pipelines en su repo y acceso a primitivas; clúster de gestión aislado. Bloque 3 — el template React de Frontend: lo revisa la plataforma con controles automatizados, pero el on-call si falla es de <b>Frontend</b>; Jenkins (2 de 30 equipos, 30% del mantenimiento) → plan de deprecación en 3 pasos que fomente adopción pull (anuncio + ADR + ruta de migración y facilitación → ventana de superposición con telemetría → retiro en fecha).</p>
+
+<div class="thesis"><b>Trampas de examen S13</b><ul>
+<li>PPM = viabilidad y deseabilidad; TL = <b>factibilidad</b>. No los inviertas.</li>
+<li>Jaula dorada = curaduría <b>sin</b> producto; centro de servicios = producto <b>sin</b> curaduría.</li>
+<li>Push es Nivel 2; Pull es Nivel 3; inner sourcing es Nivel 4.</li>
+<li>Contribuir una plantilla no traslada la guardia al equipo de plataforma.</li>
+<li>«Fuera de la ruta crítica» no significa «no usar en producción»: significa que siempre hay vía de escape.</li>
+<li>El mandato no es inútil: sirve al inicio para invertir, pero no sostiene la adopción.</li></ul></div>
+</div>
+
+<!-- ===================== S14 ===================== -->
+<div class="card" id="r14"><h3><span class="tag t14">S14</span>Medir el éxito de la plataforma</h3>
+
+<h4>1. El modelo de valor: el valor es el desperdicio que se elimina</h4>
+<ul><li><b>La trampa del modelo de proyectos:</b> medir cantidad de features, story points y plazos cumplidos (actividad, no valor).</li>
+<li><b>El enfoque de producto:</b> medir <b>outcomes</b>: <b>time to market</b> y <b>Cost of Delay evitado</b>. <i>Cost of Delay</i> = lo que se deja de ganar (o se pierde) por cada unidad de tiempo que una capacidad tarda en llegar a producción.</li></ul>
+<p><b>Tres fuentes críticas de tiempo perdido:</b></p>
+<ol><li><b>Carga cognitiva extrínseca:</b> esfuerzo mental que <i>no</i> es la lógica de negocio — configuraciones complejas, herramientas fragmentadas y detalles de bajo nivel.</li>
+<li><b>Bloqueos por dependencias:</b> esperas pasivas por tickets para aprovisionar entornos, abrir accesos o configurar pipelines.</li>
+<li><b>Mala calidad e incidentes:</b> apagar incendios, reprocesar código y recuperarse de fallas por despliegues manuales sin pruebas.</li></ol>
+<p><b>Modelo financiero (33% de capacidad liberada):</b> <i>Escenario A – aceleración de ingresos:</i> +$40M (un backlog de $10M/mes entregado 4 meses antes). <i>Escenario B – eficiencia de costos:</i> 33 FTE de cada 100 desarrolladores devueltos a la innovación.</p>
+
+<h4>2. Ciclo de modelado de valor (6 pasos)</h4>
+<table><tr><th>Paso</th><th>Nombre</th><th>Qué se hace</th></tr>
+<tr><td>1</td><td><b>Identificar ineficiencias</b> — Value Stream Mapping</td><td>Mapear el flujo de extremo a extremo: flujo de <i>materiales</i> (código, artefactos) y de <i>información</i> (tickets, aprobaciones). Distinguir <b>tiempo activo</b> de <b>tiempo de espera inactivo</b>. Exponer bloqueos: permisos, BD, cumplimiento, logs.</td></tr>
+<tr><td>2</td><td><b>Costear la ineficiencia</b> — línea base financiera</td><td>Traducir horas perdidas a dinero: p. ej. 1.000 h/trimestre × costo hora FTE (organización de 100 devs).</td></tr>
+<tr><td>3</td><td><b>Simular el ROI</b></td><td>Contrastar el <b>TCO</b> (ingeniería, nube, licencias) con el retorno: A. aceleración de ingresos (time to market) o B. eficiencia de costos operativos. «Lo manual "gratuito" tiene un costo recurrente y de oportunidad.»</td></tr>
+<tr><td>4</td><td><b>Asegurar financiamiento</b></td><td>Hablar el lenguaje de la inversión (retorno, riesgo, costo por cambio), no «actualizar Kubernetes». Acordar supuestos y horizonte (1 o 3 años). Financiar primero una <b>TVP con early adopters</b>.</td></tr>
+<tr><td>5</td><td><b>Comparar real vs. estimado</b> — contraste empírico</td><td>No asumir el éxito, medirlo: adopción real del golden path vs. procesos manuales; impacto en DORA y tiempos de ciclo; menos horas en tickets; onboarding más corto. Confirmar, denegar o ajustar el modelo.</td></tr>
+<tr><td>6</td><td><b>Ajustar y priorizar</b> — reasignación</td><td>Invertir donde el valor se demostró; deprecar lo subutilizado antes de que sea deuda; cada iniciativa compite en el backlog por su ROI.</td></tr></table>
+
+<h4>3. Métricas rezagadas vs. predictivas</h4>
+<table><tr><th></th><th>Rezagadas (lagging) — DORA</th><th>Predictivas (leading)</th></tr>
+<tr><td>Qué dicen</td><td>Lo que <b>ya ocurrió</b>: cuantifican la entrega cuando el software ya está en producción o el incidente ya impactó.</td><td>Lo que <b>va a ocurrir</b>: se capturan en fases intermedias (código, build, pruebas, empaquetado, preproducción) y correlacionan con el comportamiento futuro de DORA.</td></tr>
+<tr><td>Utilidad</td><td>Útiles para el liderazgo; <b>poca capacidad de maniobra</b> (cuando las ves, ya pasó).</td><td>Permiten <b>actuar antes</b> del despliegue y mitigar fallos antes de producción.</td></tr></table>
+<p>Ese es «el punto ciego de DORA». Implementación cloud-native: <b>shift-left de errores</b> (muchos fallos en desarrollo, pocos en QA, cero en producción); <b>despliegue progresivo</b> (canary o blue/green validan latencia, errores y CPU con SLIs antes de promover); <b>telemetría de eventos</b> (CloudEvents/CDEvents convierten los hitos de entrega en series temporales).</p>
+
+<h4>4. Las 4 métricas DORA y sus predictivas</h4>
+<table><tr><th>DORA (lagging)</th><th>Definición</th><th>Predictivas (leading) que la anticipan</th></tr>
+<tr><td><b>Deployment Frequency</b></td><td>Con qué periodicidad se libera código a producción <b>con éxito</b>.</td><td><b>% de despliegues automatizados</b> (vs. con intervención manual); <b>frecuencia por equipo</b> (revela qué células sufren bloqueos antes de que se degrade el promedio).</td></tr>
+<tr><td><b>Lead Time for Changes</b></td><td>Tiempo desde el <b>commit</b> en control de versiones hasta que el cambio <b>corre en producción</b>.</td><td><b>Tiempo por etapa del pipeline</b> (build, unitarias, empaquetado: detecta al instante qué fase se degrada); <b>retrasos externos</b> (esperas por aprobaciones, solicitudes de infraestructura, dependencias).</td></tr>
+<tr><td><b>Change Failure Rate</b></td><td>% de despliegues que causan degradación, parches urgentes (hotfix) o rollbacks.</td><td><b>Violaciones de calidad de código</b> (estilo, vulnerabilidades, análisis estático); <b>cobertura de pruebas</b>; <b>ratio pruebas manuales vs. automatizadas</b> (lo manual ralentiza y eleva el escape de errores).</td></tr>
+<tr><td><b>Time to Restore (MTTR)</b></td><td>Tiempo medio para restaurar la operación tras una falla en producción.</td><td><b>MTTD</b> (Mean Time To Detect: alertas, telemetría y monitores sintéticos detectan la anomalía antes de que el usuario la reporte); <b>MTTA</b> (Mean Time To Acknowledge: lapso entre la alerta y que un ingeniero asume la resolución).</td></tr></table>
+<p class="mut">Velocidad = Deployment Frequency + Lead Time. Estabilidad = Change Failure Rate + MTTR.</p>
+
+<h4>5. Costo por cambio — la métrica económica de la plataforma</h4>
+<ul><li><b>Fórmula:</b> <code>Costo por cambio = TCO de la plataforma (personal + nube/cómputo + licencias) ÷ cambios exitosos en el período</code>.</li>
+<li><b>Por qué funciona:</b> los costos de la plataforma son <b>cuasi-fijos</b>; el volumen de cambios puede crecer exponencialmente → el costo unitario cae.</li>
+<li><b>Ejemplo (mismo ritmo, 30 cambios/mes):</b> inicial $500 por cambio = $180.000/año; madura $80 por cambio = $28.800/año. Con el mismo presupuesto se absorben cientos de cambios adicionales.</li>
+<li><b>Curva en el ciclo de vida</b> (el costo por cambio <b>sube antes de desplomarse</b>): 1 · primeras adopciones — <b>sube</b> (inversión repartida entre pocas apps); 2 · despegue — <b>meseta</b> (crece el soporte); 3 · optimización — <b>se desploma</b> (autoservicio); 4 · producto — <b>mínimo, estático y predecible</b> (consolidado).</li></ul>
+
+<h4>6. Adopción voluntaria = los «ingresos» de la plataforma</h4>
+<ul><li><b>Fórmula:</b> <code>Adopción = (equipos que eligen el paved path ÷ equipos elegibles) × 100</code>.</li>
+<li><b>¿Por qué «elegibles»?</b> El paved path cubre el 80% común, no los atípicos ni lo experimental; contarlos distorsionaría la métrica.</li>
+<li><b>La alternativa (contra lo que se compite):</b> tickets manuales, infraestructura artesanal y scripts de pipeline fragmentados.</li>
+<li><b>Instrumentación:</b> repos creados con <b>Software Templates</b> del portal (p. ej. Backstage) vs. manuales; <b>tasa de autoservicio</b> (operaciones completadas de extremo a extremo sin intervención humana).</li>
+<li><b>Correlación inversa con tickets:</b> más adopción ⇒ caída sostenida de solicitudes de entornos y accesos.</li>
+<li><b>Alerta temprana de rotura:</b> una <b>caída súbita</b> de adopción delata plantillas obsoletas o rotas.</li>
+<li><b>Impacto:</b> menor lead time y cumplimiento incorporado por defecto.</li></ul>
+
+<h4>7. Soporte — desacoplar el esfuerzo operativo del crecimiento</h4>
+<ul><li><b>Comportamiento esperado:</b> en TI tradicional las solicitudes de soporte <b>crecen linealmente</b> con los usuarios; en una plataforma como producto hay un <b>pico inicial</b> y luego bajan a un <b>mínimo estable</b>.</li>
+<li><b>Cuatro mecanismos:</b> A · <b>autoservicio genuino</b> (API, portal o CLI sin esperar a un operador); B · <b>observabilidad para el usuario</b> (que el dev distinga si el fallo es de su código o de la plataforma); C · <b>retroalimentación y documentación</b> (categorizar tickets y eliminar la causa de lo repetido); D · <b>de lo común a lo inusual</b> (señal de madurez: las preguntas pasan a ser edge cases).</li>
+<li><b>Por qué importa:</b> evita la trampa del soporte permanente; guardias sostenibles (&lt; 5 alertas de negocio por semana); libera capacidad para arquitectura y costos.</li></ul>
+
+<h4>8. Framework SPACE (GitHub, Microsoft y Universidad de Victoria)</h4>
+<p><b>Definición:</b> una <b>guía categórica</b> — no una lista prefabricada de KPIs — que equilibra rendimiento técnico con bienestar humano y colaboración. Idea central: <b>la productividad no cabe en una sola métrica</b>.</p>
+<table><tr><th>Dimensión</th><th>Qué captura</th><th>Ejemplos de medición</th></tr>
+<tr><td><b>S</b> · Satisfaction &amp; Well-being</td><td>Satisfacción, realización y salud mental</td><td>ESS (satisfacción del empleado), eNPS, EEI (índice de compromiso), encuestas</td></tr>
+<tr><td><b>P</b> · Performance</td><td><b>Impacto y resultados</b>, no esfuerzo bruto</td><td>Lead time, MTTR, releases, cobertura</td></tr>
+<tr><td><b>A</b> · Activity</td><td>Recuento de acciones durante el desarrollo</td><td>Commits, PRs, despliegues</td></tr>
+<tr><td><b>C</b> · Communication &amp; Collaboration</td><td>Interacción y alineación entre personas y equipos</td><td>PR merge time, comentarios en reviews, reuniones</td></tr>
+<tr><td><b>E</b> · Efficiency &amp; Flow</td><td>Fluidez del trabajo sin fricción ni interrupciones</td><td>Lead time, focus hours, handoffs</td></tr></table>
+<p>⚠ <b>Privacidad laboral:</b> al medir personas hay que involucrar a protección de datos.</p>
+<p><b>Niveles de aplicación (Kaufmann, <i>Accelerate DevOps with GitHub</i>):</b></p>
+<table><tr><th></th><th>Individual</th><th>Equipo</th><th>Sistema</th></tr>
+<tr><td>S</td><td>Satisfacción propia y retención</td><td>Moral y retención del equipo</td><td>Conformidad con sistemas y herramientas de plataforma</td></tr>
+<tr><td>P</td><td>Velocidad de revisión de código</td><td>Velocidad de entrega, delivery lead time</td><td>Lead time global, MTTR, satisfacción del cliente</td></tr>
+<tr><td>A</td><td>Focus time, commits, PBIs resueltos</td><td>Cycle time, velocidad de completitud</td><td>Frecuencia global de despliegue</td></tr>
+<tr><td>C</td><td>Calidad de code reviews, PR merge time</td><td>Participación en revisiones, calidad de reuniones</td><td>Repositorios comunes de conocimiento</td></tr>
+<tr><td>E</td><td>Compartir conocimiento y revisiones entre equipos</td><td>PR stale time, número de handoffs</td><td>Revisiones cruzadas en toda la organización</td></tr></table>
+<p><b>Lectura crítica:</b> correlacionar las dimensiones entre niveles evita <b>optimizar al individuo a costa del sistema</b>.</p>
+
+<h4>9. DORA y SPACE: complementarios, no excluyentes</h4>
+<ul><li><b>Dónde encaja DORA dentro de SPACE:</b> <i>P · Performance</i> → Lead Time, MTTR, Change Failure Rate (métricas base de rendimiento: entrega, resiliencia, estabilidad); <i>E · Efficiency &amp; Flow</i> → Lead Time como <b>sensor de fricción</b>, complementado con handoffs, stale time y focus hours; <i>A · Activity</i> → Deployment Frequency como <b>cadencia agregada del sistema</b>, <b>nunca</b> como evaluación individual.</li>
+<li><b>DORA = objetividad:</b> automatizable con eventos del pipeline, sin encuestas.</li>
+<li><b>SPACE = guardrail:</b> el bienestar evita que la presión por velocidad genere burnout.</li>
+<li><b>La pieza faltante = DevEx:</b> examina las causas cotidianas detrás de los resultados.</li></ul>
+
+<h4>10. Framework DevEx (ACM Queue)</h4>
+<p>DORA mide la entrega y SPACE la productividad; <b>DevEx explica cómo vive el desarrollador su trabajo diario</b> — la causa raíz. Tres dimensiones interconectadas que determinan adopción, satisfacción y eficiencia:</p>
+<table><tr><th>Dimensión</th><th>Definición</th><th>Métricas objetivas</th><th>Métricas subjetivas</th></tr>
+<tr><td><b>Estado de flujo</b></td><td>Inmersión plena en el trabajo; cuanto más fácil entrar y permanecer, mejor.</td><td>Commits reabiertos, change requests, commits por PR</td><td>Interrupciones, estrés, autonomía técnica</td></tr>
+<tr><td><b>Carga cognitiva</b></td><td>Esfuerzo mental en la memoria de trabajo; lo innecesario debe minimizarse.</td><td>Bugs reabiertos, tiempo de debugging, dependencias</td><td>Tiempo en código vs. tareas operativas, cambios de contexto</td></tr>
+<tr><td><b>Bucles de retroalimentación</b></td><td>Rapidez y calidad de la respuesta a las acciones del dev: build, pruebas, CI/CD, review, alertas.</td><td>Cycle time, frecuencia de despliegue, MTTR, reviews</td><td>¿La respuesta es directa, accionable y comprensible?</td></tr></table>
+
+<h4>11. Caso: defender la inversión ante la junta (taller)</h4>
+<p><b>Situación:</b> la junta exige un recorte de <b>15%</b> a TI y apunta al equipo de plataforma de <b>12 ingenieros</b> («no construyen características de negocio»). Datos: sin plataforma, aprovisionar e integrar toma <b>20 días</b>; con Golden Path, <b>2 días</b>; <b>5 ingenieros</b> por equipo; <b>$500 USD diarios</b> por ingeniero en esperas y configuraciones; <b>10 equipos</b> usan la ruta.</p>
+<p><b>Bloque 1 – ROI:</b> ahorro por despliegue de infraestructura y por equipo = (20 − 2) días × 5 ingenieros × $500 = <b>$45.000</b>. Proyectado a 10 equipos = <b>$450.000</b> por ciclo. Enunciado de Cost of Delay: «cada aprovisionamiento por la ruta dorada evita 18 días de demora por equipo; recortar al equipo reintroduce ese costo en los 10 equipos».</p>
+<p><b>Bloque 2 – Tablero para el CTO:</b> (1) una métrica DORA lagging + su predictiva (p. ej. Lead Time for Changes + tiempo por etapa del pipeline/retrasos externos); (2) métricas SPACE que protejan la productividad humana (satisfacción/eNPS, focus hours, handoffs); (3) un KPI financiero o de producto (costo por cambio o tasa de adopción).</p>
+<p><b>Bloque 3 – DevEx:</b> explicar cómo el Golden Path ↓ disminuye la carga cognitiva (IAM, Helm, pipelines detrás de plantillas seguras por defecto) y ↻ acelera el ciclo de retroalimentación (entornos en minutos, CI/CD listo), para evitar que los ingenieros busquen alternativas en shadow IT.</p>
+
+<div class="thesis"><b>Trampas de examen S14</b><ul>
+<li>DORA es <b>lagging</b>; MTTD/MTTA, cobertura, tiempo por etapa son <b>leading</b>.</li>
+<li>MTTD/MTTA anticipan <b>MTTR</b>; cobertura y calidad anticipan <b>Change Failure Rate</b>.</li>
+<li>Adopción se divide entre equipos <b>elegibles</b>, no entre todos.</li>
+<li>El costo por cambio <b>sube</b> al inicio antes de caer.</li>
+<li>SPACE no es una lista de KPIs, es una guía de categorías. Activity (commits, PRs) sola es una mala medida de productividad.</li>
+<li>Deployment Frequency nunca para evaluar individuos.</li>
+<li>Ojo con las cuentas del caso: son 18 días ahorrados, no 20.</li></ul></div>
+</div>
+
+<!-- ===================== GLOSARIO ===================== -->
+<div class="card" id="rglos"><h3>Glosario</h3>
+<table>
+<tr><th>Término</th><th>Definición</th><th>S</th></tr>
+<tr><td>ACL</td><td>Lista de control de acceso: permiso granular identidad → recurso (READ, WRITE, CREATE, DELETE, ALTER, DESCRIBE), nativa del broker.</td><td>11</td></tr>
+<tr><td>ADR</td><td>Architecture Decision Record: documento breve que registra una decisión y su porqué.</td><td>13</td></tr>
+<tr><td>API de equipo</td><td>Interfaz explícita de un equipo hacia los demás: qué ofrece, versionado, documentación, canales y roadmap.</td><td>12</td></tr>
+<tr><td>AsyncAPI</td><td>Especificación para describir APIs asíncronas/eventos (equivalente a OpenAPI para eventos); permite generar código.</td><td>11</td></tr>
+<tr><td>At-least-once</td><td>Garantía de entrega en la que un mensaje llega al menos una vez (puede duplicarse).</td><td>11</td></tr>
+<tr><td>Blast radius</td><td>Alcance del daño que puede causar una falla o un ataque.</td><td>13</td></tr>
+<tr><td>Bounded context</td><td>Frontera (DDD) dentro de la cual un modelo de dominio tiene un significado consistente y un único dueño.</td><td>10/12</td></tr>
+<tr><td>CDC</td><td>Change Data Capture: capturar los cambios de una BD leyendo su log de transacciones (WAL) y publicarlos como eventos (p. ej. Debezium).</td><td>10/11</td></tr>
+<tr><td>CDEvents</td><td>Especificación de eventos de CI/CD basada en CloudEvents; alimenta métricas DORA.</td><td>11/14</td></tr>
+<tr><td>Chargeback</td><td>Modelo en que las áreas pagan por la capacidad de plataforma que consumen; señal de atracción intrínseca.</td><td>13</td></tr>
+<tr><td>CloudEvents</td><td>Especificación CNCF de envoltura común de eventos que separa metadatos (id, source, type, time) del payload.</td><td>11</td></tr>
+<tr><td>Compactación</td><td>Proceso del broker que conserva solo el último evento por clave.</td><td>10</td></tr>
+<tr><td>Consistencia eventual</td><td>Los consumidores convergen al mismo estado tras un tiempo, no de forma inmediata.</td><td>10</td></tr>
+<tr><td>Contrato de datos</td><td>Acuerdo sociotécnico entre productor y consumidores: esquema + propiedad + SLO + evolución + seguridad + gestión de cambios.</td><td>10</td></tr>
+<tr><td>Cost of Delay</td><td>Valor que se pierde por cada unidad de tiempo que se retrasa una entrega.</td><td>14</td></tr>
+<tr><td>CSFLE</td><td>Client-Side Field Level Encryption: cifrar campos sensibles en el cliente antes de publicarlos.</td><td>10</td></tr>
+<tr><td>CUJ</td><td>Critical User Journey: recorrido crítico con el que el desarrollador logra su objetivo.</td><td>13</td></tr>
+<tr><td>Dapr</td><td>Distributed Application Runtime: runtime basado en sidecar que ofrece pub/sub y otras capacidades vía API uniforme.</td><td>11</td></tr>
+<tr><td>Delta (evento)</td><td>Evento que solo contiene el cambio ocurrido, sin estado.</td><td>10</td></tr>
+<tr><td>DevEx</td><td>Developer Experience; framework con tres dimensiones: flujo, carga cognitiva, retroalimentación.</td><td>14</td></tr>
+<tr><td>Disponibilidad invertida</td><td>Cuando el consumidor depende del uptime del productor (p. ej. por eventos de notificación), anulando el desacoplamiento.</td><td>10</td></tr>
+<tr><td>DLT</td><td>Dead-Letter Topic: tópico al que van los mensajes que no se pueden procesar.</td><td>11</td></tr>
+<tr><td>DORA</td><td>Cuatro métricas de entrega: deployment frequency, lead time for changes, change failure rate, time to restore.</td><td>14</td></tr>
+<tr><td>Dogfooding</td><td>Que el equipo de plataforma use sus propios servicios.</td><td>12</td></tr>
+<tr><td>ECST</td><td>Event-Carried State Transfer: evento que lleva el estado público completo de la entidad.</td><td>10</td></tr>
+<tr><td>Escritor único</td><td>Un solo microservicio con permiso WRITE por stream.</td><td>11</td></tr>
+<tr><td>Event sourcing</td><td>Patrón en el que el estado se deriva de la secuencia de eventos (deltas) del dominio.</td><td>10</td></tr>
+<tr><td>FULL_TRANSITIVE</td><td>Compatibilidad en ambos sentidos contra todas las versiones históricas.</td><td>10</td></tr>
+<tr><td>Golden path / paved path</td><td>Ruta estándar, recomendada y en autoservicio para hacer algo común (crear un servicio, desplegar); lo correcto es lo más fácil.</td><td>12/13</td></tr>
+<tr><td>Hand-off</td><td>Traspaso de trabajo entre equipos que genera espera.</td><td>12</td></tr>
+<tr><td>IDP</td><td>Internal Developer Platform: plataforma interna de autoservicio para desarrolladores.</td><td>12/13</td></tr>
+<tr><td>InnerSourcing</td><td>Prácticas de open source dentro de la organización para que otros equipos contribuyan.</td><td>13</td></tr>
+<tr><td>Lagging / leading</td><td>Métrica rezagada (resultado ya ocurrido) / predictiva (señal temprana).</td><td>14</td></tr>
+<tr><td>Ley de Conway</td><td>Los sistemas reflejan las estructuras de comunicación de la organización que los diseña.</td><td>12</td></tr>
+<tr><td>Maniobra inversa de Conway</td><td>Diseñar la organización para obtener la arquitectura deseada.</td><td>12</td></tr>
+<tr><td>Materialización</td><td>Proyectar un flujo de eventos en una tabla/almacén local mediante upsert por clave.</td><td>10</td></tr>
+<tr><td>MTTD / MTTA / MTTR</td><td>Tiempo medio de detección / reconocimiento / restauración.</td><td>14</td></tr>
+<tr><td>Notificación (evento)</td><td>Señal mínima + URI para consultar el estado en el origen; antipatrón entre dominios.</td><td>10</td></tr>
+<tr><td>Offset</td><td>Posición única, monotónica e inmutable de un evento en una partición.</td><td>10</td></tr>
+<tr><td>Partición</td><td>Subdivisión de un tópico; garantiza orden interno y permite paralelismo.</td><td>10</td></tr>
+<tr><td>Policy as code</td><td>Políticas expresadas como código que se evalúan automáticamente (OPA, Kyverno).</td><td>13</td></tr>
+<tr><td>PPM</td><td>Platform Product Manager: responsable de viabilidad y deseabilidad de la plataforma.</td><td>13</td></tr>
+<tr><td>RBAC</td><td>Control de acceso basado en roles, por encima de las ACLs.</td><td>11</td></tr>
+<tr><td>Schema Registry</td><td>Servicio que almacena, versiona y valida esquemas; gatekeeper en la ruta de escritura.</td><td>10/11</td></tr>
+<tr><td>Shadow IT</td><td>Infraestructura o herramientas que los equipos montan por fuera de la plataforma oficial.</td><td>13</td></tr>
+<tr><td>Sidecar</td><td>Proceso auxiliar que corre junto al contenedor principal en el mismo Pod y le ofrece capacidades (p. ej. mensajería).</td><td>11</td></tr>
+<tr><td>SLO / SLA / SLI</td><td>Objetivo de nivel de servicio / acuerdo (compromiso) / indicador medido.</td><td>10/11</td></tr>
+<tr><td>SMT</td><td>Single Message Transform: transformación por mensaje en conectores (p. ej. enmascarar PII).</td><td>11</td></tr>
+<tr><td>SPACE</td><td>Framework de productividad: Satisfaction, Performance, Activity, Communication, Efficiency.</td><td>14</td></tr>
+<tr><td>TCO</td><td>Total Cost of Ownership: costo total (personal, nube, licencias).</td><td>14</td></tr>
+<tr><td>Tombstone</td><td>Evento con clave y valor null que borra la entidad.</td><td>10</td></tr>
+<tr><td>Toil</td><td>Trabajo operativo manual, repetitivo y automatizable.</td><td>13</td></tr>
+<tr><td>TVP</td><td>Thinnest Viable Platform: la plataforma más ligera que resuelve el problema.</td><td>12/13</td></tr>
+<tr><td>Two-in-a-Box</td><td>Liderazgo dual de la plataforma: PPM + TL/EM.</td><td>13</td></tr>
+<tr><td>Value Stream Mapping</td><td>Mapeo del flujo de valor de extremo a extremo, distinguiendo tiempo activo y de espera.</td><td>14</td></tr>
+<tr><td>Walking skeleton</td><td>Implementación mínima de punta a punta que sirve de referencia.</td><td>12</td></tr>
+<tr><td>X-as-a-Service</td><td>Modo de interacción en que un equipo consume la capacidad de otro vía API de autoservicio.</td><td>12</td></tr>
 </table></div>
-
-<div class="card"><h3><span class="tag t10">S10</span>Arquitectura orientada a eventos: fundamentos, diseño de estado y contratos</h3>
-<h4>Cambio de paradigma</h4>
-<ul><li><b>Restricción de la BD monolítica</b>: integración punto a punto (SQL directo, APIs síncronas, ETL por lotes), exposición de la implementación (refactor rompe a los downstream) y silos analítico/operativo (datos «similares pero diferentes»).</li>
-<li>De la <b>BD como fuente de verdad → al flujo de eventos como verdad</b>. Consistencia fuerte y ACID local en el productor; <b>consistencia eventual</b> downstream. Los consumidores materializan el estado en almacenes propios.</li>
-<li><b>Habilitadores</b>: registro duradero de solo adición (vs. colas efímeras), retención infinita + tiered storage, compactación, ECST.</li>
-<li><b>Cambio sociotécnico</b>: malla de datos orientada a eventos — propiedad soberana (quien crea el dato es dueño del contrato) y contratos estandarizados (registry como gatekeeper).</li></ul>
-<h4>Registro de solo adición</h4>
-<ul><li>Reglas: <b>APPEND</b> (solo al final), <b>READ</b> (asíncrono, a ritmo propio, leer no consume), <b>OFFSET</b> (índice único, monotónico, inmutable).</li>
-<li>4 garantías: <b>inmutabilidad</b> (un error se corrige con un nuevo evento), <b>particionamiento</b> (misma clave → misma partición, determinista; escala horizontal), <b>orden estricto dentro de la partición</b> («pagado» nunca antes de «creado»), <b>reproducibilidad</b> (retroceder el offset reconstruye el estado; tiered storage transparente).</li></ul>
-<h4>Tres formas de comunicar estado</h4>
-<table><tr><th>Tipo</th><th>Qué lleva</th><th>Veredicto</th></tr>
-<tr><td><b>ECST</b> (Event-Carried State Transfer)</td><td>Instantánea completa del estado público, incluidos campos sin cambio (como una fila anexada).</td><td>Recomendado entre dominios. Desacoplamiento fuerte, materialización, inferencia de transición. Altamente compactable.</td></tr>
-<tr><td><b>Delta</b></td><td>Solo el cambio (verbos en pasado: <i>orderPaid</i>, <i>itemAddedToCart</i>).</td><td>Potente <b>dentro</b> del bounded context (event sourcing). Frágil fuera: 5 riesgos. No compactable.</td></tr>
-<tr><td><b>Notificación</b></td><td>Señal mínima + URI para consultar el origen.</td><td><b>Antipatrón</b> entre dominios: carreras/pérdida de historial, doble ruta operativa, disponibilidad invertida.</td></tr></table>
-<p><b>ECST – dos estrategias de payload:</b> (1) <i>estado actual</i>: reducido, compactable, agnóstico a la causa; trade-off: el consumidor necesita su propio store para detectar transiciones. (2) <i>antes/después (CDC)</i>: permite consumidores stateless; trade-off: duplica datos y dificulta la compactación (after:null con before poblado ≠ tombstone).</p>
-<p><b>5 riesgos del delta interdominio:</b> tipos de eventos infinitos · lógica de agregación replicada · evolución deficiente de esquemas · inversión de la propiedad (<i>userReturnedItemAfterTelephoneComplaint</i>) · historial no compactable (semanas para llegar a tiempo real).</p>
-<h4>Compactación</h4>
-<ul><li>Proceso asíncrono que retiene <b>solo el evento más reciente por clave</b> (no por TTL): tamaño ∝ claves activas, no tiempo.</li>
-<li>Preserva offsets (las brechas no afectan al consumidor secuencial). Garantía: leer desde offset 0 un flujo compactado materializa la <b>misma tabla</b> que quien consumió desde siempre.</li>
-<li><b>Tombstone</b>: clave con valor <code>null</code> → el consumidor borra la entidad y el compactador purga su historial.</li>
-<li><b>Retraso de compactación</b>: ventana que protege eventos recientes para que los consumidores lean transiciones intermedias.</li>
-<li>Compactabilidad: ECST alta · CDC/Debezium difícil (op:"d" + tombstone) · Delta no compactable.</li></ul>
-<h4>Contratos de datos y Schema Registry</h4>
-<ul><li>Nivel técnico = <b>esquema</b> (estructura, tipos, defaults, obligatoriedad). Nivel sociotécnico = <b>contrato de datos</b> (pacto con consumidores pasados, presentes y futuros).</li>
-<li>Anatomía del contrato: esquema · propiedad explícita · SLO/SLA · reglas de evolución (p. ej. FULL_TRANSITIVE) · seguridad y privacidad (PII, RBAC/ACL, <b>CSFLE</b>) · gestión de cambios destructivos.</li>
-<li><b>Schema Registry</b> (Avro, Protobuf, JSON Schema): ruta de escritura → serializador obtiene un <b>ID</b> y lo pone como <b>prefijo de 5 bytes</b>; ruta de lectura → deserializador lee el ID y obtiene el esquema (caché).</li>
-<li>5 beneficios: menos red/disco · <b>gatekeeping en la ruta de escritura</b> (excepción y bloqueo) · descubrimiento y autoservicio · documentación autoactualizada · generación de código tipado (avro-tools, buf).</li></ul>
-<h4>Evolución de esquemas</h4>
-<table><tr><th>Modo</th><th>Garantía</th><th>Orden de despliegue</th><th>Cambios permitidos</th></tr>
-<tr><td>BACKWARD</td><td>Consumidor con esquema <b>nuevo</b> lee datos <b>antiguos</b></td><td>Consumidores primero</td><td>Eliminar campo; añadir con default</td></tr>
-<tr><td>FORWARD</td><td>Consumidor con esquema <b>antiguo</b> lee datos <b>nuevos</b></td><td>Productores primero</td><td>Eliminar campo opcional; añadir campos que el legado ignore</td></tr>
-<tr><td>FULL</td><td>Ambos sentidos entre versiones secuenciales</td><td>Cualquier orden</td><td>Añadir/eliminar opcionales con default</td></tr></table>
-<p><b>Transitivo</b>: valida contra <i>todas</i> las versiones históricas (no solo la anterior). <b>FULL_TRANSITIVE = estándar de oro</b> para reprocesar años de historia. Cambios disruptivos: (1) diseño y revisión vía PR aprobado por consumidores, (2) <b>producción dual</b> (flujo viejo marcado OBSOLETO + nuevo, ventana de migración), (3) reprocesamiento histórico para poblar la v2.</p>
-<p><b>Caso Retail-Core:</b> InventoryService emite delta JSON sin esquema <code>{productId, stockChange:-2}</code>. Falla 1: sin contrato → renombran stockChange a delta y rompe en silencio. Falla 2: sin estado → PurchasingService consulta la API síncrona (disponibilidad invertida). Solución: ECST con stock total + esquema Avro con campos requeridos + compatibilidad (FULL/FULL_TRANSITIVE) para que eliminar productId sea rechazado en la ruta de escritura.</p>
-</div>
-
-<div class="card"><h3><span class="tag t11">S11</span>Plataforma y gobierno de eventos</h3>
-<h4>Planos de la plataforma de datos</h4>
-<ul><li><b>Plano de control (Event Manager)</b>: broker management (ownership, quotas, topology, metadata tagging, ACLs & RBAC, dependencies) + Schema Registry (schema management, evolution notification).</li>
-<li><b>Plano de datos (Event Mesh)</b>: brokers. Telemetría sube al control; el control configura.</li></ul>
-<h4>Modelo de madurez</h4>
-<table><tr><th>Nivel</th><th>Componentes</th><th>Detonante</th></tr>
-<tr><td>1 · MVP</td><td>Event broker (Kafka / SaaS) · Schema Registry (webhook en ruta de escritura) · <b>Catálogo básico en hoja de cálculo</b> (producto, owner, tópico+URI, SLA, calidad, PII) · Conectores source/sink (SMTs para ocultar PII)</td><td>Entregar valor validado sin sobreingeniería</td></tr>
-<tr><td>2 · Estandarización</td><td>Catálogo de metadatos (Apache Atlas / Amundsen) · servicio centralizado de autoservicio · identidades estandarizadas · controles de acceso básicos (WRITE/READ, ACLs aún manuales) · procesamiento de stream administrado</td><td>Hojas desincronizadas, streams expuestos, sin identidad de servicio</td></tr>
-<tr><td>3 · Gobernanza programática</td><td>IAM unificado (OAuth2 + OIDC, tokens cortos) · entrega integrada a un clic · API programática REST/gRPC · observabilidad de SLAs (consumidores sintéticos) · multirregión/multicloud</td><td>Configuración manual de ACLs = cuello de botella</td></tr></table>
-<p><b>Flujo MVP (6 pasos):</b> conector y permisos (Debezium) → registro del esquema (ID en caché) → ingesta CDC (lee WAL, binario, tópico) → alta en el catálogo (manual) → vínculo al esquema (URI a la API REST del registry) → consumo desacoplado (sink sin código o clases generadas). Payload = <b>[5 bytes ID] + [binario]</b>. Registry = sustrato de doble propósito (serializador + descubrimiento humano).</p>
-<p><b>Productores:</b> CDC (reactivo, acopla el esquema público al diseño relacional privado) → <b>publicador nativo event-first</b> (control semántico, serialización del lado cliente, contrato aplicado en origen).</p>
-<h4>Gobierno avanzado</h4>
-<ul><li><b>Portal de eventos</b> contra el «caos de datos»: sistema de registro único (diseñar, catalogar, aprovisionar, auditar). Design-first: topología visual de dominios (radio de impacto), código desde <b>AsyncAPI</b>, diseño asistido por IA + <b>MCP</b>.</li>
-<li><b>Auditoría activa</b>: diseño = despliegue; conciliación autorrecuperable; activos huérfanos marcados para retiro; cambios a campos inmutables bloqueados; audit log sin credenciales ni PII; ML para anomalías.</li>
-<li><b>Acceso</b>: ACL (primitiva del broker, identidad→recurso; READ, WRITE, CREATE, DELETE, ALTER, DESCRIBE) · RBAC (roles, se integra al IdP) · <b>Principio de escritor único</b> (un solo microservicio con WRITE por stream). Humanos OIDC/SSO; servicios: una cuenta por microservicio (1:1). Portal: buscar → solicitar READ → aprobación del productor → broker configurado.</li>
-<li><b>Trazabilidad</b>: estática (grafo por permisos ACL/RBAC), dinámica (OpenTelemetry: traceparent en header → spans → DAG; Tempo/Jaeger/Zipkin), operativa (huérfanos, <b>índice de reutilización</b>).</li></ul>
-<h4>Experiencia del desarrollador</h4>
-<ul><li><b>Pluggable message brokers</b>: problema del SDK directo (carga cognitiva, acoplamiento código–infra, dispersión de entornos) → patrón <b>sidecar + API uniforme</b> (HTTP localhost Pub/Sub, componentes declarativos).</li>
-<li><b>Regla 95/5</b>: 95% pub/sub básico at-least-once vía API conectable; 5% funciones propietarias aisladas en un servicio adaptador.</li>
-<li><b>CloudEvents 1.0 (CNCF)</b>: separa envoltura (metadatos) de data. Modo <b>estructurado</b> (todo en un documento JSON) vs. <b>binario</b> (cuerpo en bruto, atributos en headers). Habilita enrutamiento por contenido (CEL), rastreo (W3C Trace Context), abstracción del framework, base de <b>CDEvents</b> (DORA).</li>
-<li><b>Dapr</b>: enrutamiento declarativo (Subscription), DLT y resiliencia, multi-inquilino (<code>consumerID: "{namespace}"</code>), <code>scopes</code>/<code>allowedTopics</code>, TTL (<code>ttlInSeconds</code>), bulk (<code>maxMessagesCount</code>, <code>maxAwaitDurationMs</code>). Migrar de Redis a Kafka: solo cambia <code>spec.type</code> y <code>spec.metadata</code>. Sidecar inyectado por MutatingWebhook.</li></ul>
-</div>
-
-<div class="card"><h3><span class="tag t12">S12</span>Estructura organizacional · Team Topologies</h3>
-<ul><li><b>Ley de Conway (1968)</b>: los sistemas copian las estructuras de comunicación. Ruth Malan: «si arquitectura y organización están en conflicto, la organización gana». Ejemplos: compilador de 4 pasadas (Raymond), «todos con todos» → monolito enredado, pantano de pegamento.</li>
-<li><b>Maniobra inversa de Conway</b> (J. Lewis, 2015; Accelerate): diseñar equipos y fronteras de comunicación para obtener la arquitectura deseada. Pasos: reestructurar equipos → colaborar/facilitar para descubrir límites → ajustar API de equipo → fijar contratos X-as-a-Service.</li></ul>
-<table><tr><th>Topología</th><th>Esencia</th><th>Claves</th></tr>
-<tr><td><b>Alineado al stream</b></td><td>Multifuncional, larga duración, un flujo de valor, end-to-end</td><td>Unidad primaria; proporción 6:1–9:1 frente a soporte; «tú lo construyes, tú lo operas»; equipo de dos pizzas</td></tr>
-<tr><td><b>Plataforma</b></td><td>Construye la IDP y golden paths; autoservicio que reduce carga cognitiva</td><td>Gestionada como producto, dogfooding, «turtles all the way down» (topologías internas)</td></tr>
-<tr><td><b>Habilitador</b></td><td>Especialistas que capacitan temporalmente</td><td>No ejecuta tareas; planifica su propia extinción (Robin Weston); walking skeletons; DBA/QA → habilitadores</td></tr>
-<tr><td><b>Subsistema complicado</b></td><td>Aísla complejidad matemática/técnica</td><td>Se forma por carga cognitiva, NO porque un componente se comparta (eso es equipo de componentes ✕). Ej.: códecs, ML, riesgo, simulación</td></tr></table>
-<table><tr><th>Interacción</th><th>Características</th></tr>
-<tr><td><b>Colaboración</b></td><td>Descubrimiento conjunto, temporal, alto ancho de banda, fronteras difusas; impuesto: carga cognitiva alta y menor entrega; perpetua = enmascara deficiencias de plataforma</td></tr>
-<tr><td><b>X-as-a-Service</b></td><td>Consumo vía API clara, bajo ancho de banda, uno a muchos, SemVer como promesa, innovación más lenta (concesión deliberada por estabilidad)</td></tr>
-<tr><td><b>Facilitación</b></td><td>Transferir capacidad, no trabajo; no toma tickets ni escribe código de producción; semanas a meses; pocos equipos a la vez</td></tr></table>
-<ul><li><b>API de equipo</b>: hábitos predecibles, propiedad delimitada, señales sensoriales (la fricción revela fronteras mal ubicadas). Evolución: <b>descubrir para establecer</b> (colaboración → XaaS).</li>
-<li><b>Patrones contextuales</b>: no hay topología correcta, solo adecuada; feature teams (alta madurez), product teams (soporte no bloqueante; Microsoft VS), cloud teams (evitar el «silo renombrado»), SRE dinámico por etapas (creación → crece → escala → degrada), antipatrón «Equipo DevOps» independiente.</li>
-<li><b>Transición</b>: diagnóstico (equipos estables de 5–9, Dunbar; <b>mapa de carga cognitiva</b> simple/complicado/complejo; nunca más de un dominio complejo por equipo) → Fase 1 topologías → Fase 2 contextos delimitados y planos de fractura (DDD, Event Storming; un solo dueño por servicio) → Fase 3 API de equipo → Fase 4 <b>TVP</b> (Thinnest Viable Platform) → Fase 5 evolución dinámica.</li>
-<li><b>Caso Legacy-Pay</b>: 150 ingenieros, 1 despliegue/mes, 3 hand-offs (3 DBAs con SLA de 2 semanas, 10 SysAdmins con scripts los viernes, 5 auditores que rechazan tarde). Rediseño: 5 equipos → stream-aligned; SysAdmins → plataforma; auditores → habilitador DevSecOps (facilitación); pagos core → ¿subsistema complicado?</li></ul>
-</div>
-
-<div class="card"><h3><span class="tag t13">S13</span>Modelo operativo de la plataforma</h3>
-<table><tr><th></th><th>TI tradicional</th><th>Plataforma como producto (PaaP)</th></tr>
-<tr><td>Desarrollador</td><td>Audiencia cautiva</td><td>Cliente interno con dolores propios</td></tr>
-<tr><td>Decide</td><td>Arquitectura central, CTO, operaciones</td><td>Valor demostrado frente a alternativas</td></tr>
-<tr><td>Mide</td><td>Salidas: SLA de tickets, uptime, fechas</td><td>Resultados: carga cognitiva, lead time, CSAT/NPS, adopción voluntaria</td></tr></table>
-<ul><li><b>Ilusión de la audiencia cautiva</b>: siempre hay alternativas (workarounds, shadow IT, resistencia). Descubrimiento continuo; <b>preferencias reveladas > expresadas</b> (no el «caballo más rápido»).</li>
-<li><b>Two-in-a-Box</b>: PPM (viabilidad/ROI, estrategia, deseabilidad) + TL/EM (factibilidad, arquitectura, confiabilidad). Fronteras claras, políticas sin fricción (PPM negocia, TL integra policy-as-code), rutas con vías de escape. Tríada: viabilidad, factibilidad, <b>deseabilidad (DevEx + PPM)</b>. Antipatrón: renombrar al gerente de proyectos como «Platform Product Owner» (outputs vs. outcomes).</li>
-<li><b>Curación 80/20</b>: 20% de capacidades que usa el 80% de equipos. Espectro: centro de servicios (sin curaduría) ↔ <b>producto curado</b> ↔ jaula dorada (curaduría sin producto). Pavimentar lo que ya tiene tráfico; decir «no» a los atípicos (pueden salir asumiendo la operación).</li>
-<li><b>Fuera de la ruta crítica</b>: siempre debe haber forma de eludirla. Clúster de gestión (Crossplane, Argo CD, Tekton) aislado del de aplicaciones (sin competencia de recursos, menor blast radius). Pruebas fuera de banda (entorno de vista previa), pipelines propiedad del equipo, interfaz dual (alto nivel + primitivas), bibliotecas con SemVer.</li>
-<li><b>Push vs. pull (CNCF)</b>: push = imposición extrínseca (nivel 2, mandatos); pull = atracción intrínseca (nivel 3, valor, chargeback). El mandato enmascara carencias, genera sombra; liderazgo esencial al inicio, insuficiente para sostener. Palancas: más fácil, segura por defecto, migración progresiva, sin sobrecarga cognitiva; opt-out, API en capas, confianza por libertad.</li>
-<li><b>Deuda técnica</b>: TVP → dolores de crecimiento → bola de nieve. CUJ evaluados por observabilidad; detectar falta de uso. Checklist de obsolescencia de 8 puntos (funcionalidad, plan de transición, naturaleza del cambio, impacto, perfil de mantenimiento, diferencial de costos, cronograma, ventana de superposición) + ADR.</li>
-<li><b>InnerSourcing</b>: 85% de plugins de Backstage en Spotify vinieron de fuera del equipo central. Flujo: guía → RFC → policy-as-code (OPA/Kyverno) → extensión aislada. <b>Contribuir no es transferir la responsabilidad</b>: un solo equipo propietario; falla en plantilla aportada → equipo de dominio; falla del núcleo → guardia central. Guardias: máx. 25% del tiempo, ≈5 pages/semana.</li>
-<li><b>Modelo de madurez CNCF</b>: 5 aspectos (inversión, adopción, interfaces, operaciones, medición) × 4 niveles (provisional, operacionalizado, escalable, optimizando). El nivel 4 no es objetivo universal: apuntar al nivel adyacente.</li>
-<li><b>Caso Logistech</b>: mandato del CTO, 30 equipos, caída de 4 h del portal detuvo todos los CI/CD, equipo solo de ingenieros, shadow IT de datos. Jenkins: 2/30 equipos y 30% del mantenimiento → deprecar.</li></ul>
-</div>
-
-<div class="card"><h3><span class="tag t14">S14</span>Medir el éxito de la plataforma</h3>
-<ul><li>Trampa del modelo de proyectos: medir features, story points, plazos. Enfoque de producto: <b>time to market y Cost of Delay evitado</b>.</li>
-<li>3 fuentes de desperdicio: carga cognitiva extrínseca, bloqueos por dependencias (tickets), mala calidad e incidentes. <b>33% de capacidad liberada</b>: escenario A (+$40M: backlog de $10M/mes entregado 4 meses antes) o B (33 FTE de cada 100 devueltos a innovación).</li>
-<li><b>Ciclo de modelado de valor (6 pasos)</b>: 1 identificar ineficiencias (VSM: tiempo activo vs. espera) → 2 costear (horas × costo FTE) → 3 simular ROI (TCO vs. retorno) → 4 asegurar financiamiento (lenguaje de inversión; TVP con early adopters; horizonte 1–3 años) → 5 comparar real vs. estimado → 6 ajustar y priorizar (deprecar lo subutilizado).</li>
-<li><b>Lagging vs. leading</b>: DORA es rezagada (lo que ya ocurrió); predictivas en fases intermedias. Prácticas: shift-left, despliegue progresivo (canary/blue-green con SLIs), telemetría de eventos (CloudEvents/CDEvents).</li></ul>
-<table><tr><th>DORA (lagging)</th><th>Predictivas (leading)</th></tr>
-<tr><td>Deployment Frequency</td><td>% despliegues automatizados · frecuencia por equipo</td></tr>
-<tr><td>Lead Time for Changes</td><td>Tiempo por etapa del pipeline · retrasos externos (esperas)</td></tr>
-<tr><td>Change Failure Rate</td><td>Violaciones de calidad de código · cobertura de pruebas · ratio manual/automatizado</td></tr>
-<tr><td>Time to Restore (MTTR)</td><td>MTTD (detección) · MTTA (reconocimiento)</td></tr></table>
-<ul><li><b>Costo por cambio</b> = TCO / cambios exitosos. Curva: sube (pocas apps) → meseta → se desploma (autoservicio) → mínimo estable. Ej. 30 cambios/mes: $500 → $80 por cambio ($180.000 → $28.800/año).</li>
-<li><b>Adopción voluntaria = «ingresos» de la plataforma</b>: equipos que eligen el paved path / equipos <b>elegibles</b> × 100. Instrumentación: plantillas del portal, tasa de autoservicio. Correlación inversa con tickets; caída súbita = plantilla rota.</li>
-<li><b>Soporte</b>: en TI tradicional crece lineal con usuarios; en PaaP pico inicial → mínimo estable. Mecanismos: autoservicio genuino, observabilidad para el usuario, retroalimentación/documentación, de lo común a lo inusual.</li>
-<li><b>SPACE</b> (GitHub, Microsoft, U. Victoria): Satisfaction & well-being, Performance, Activity, Communication & collaboration, Efficiency & flow — guía categórica, no lista; niveles individual/equipo/sistema; ⚠ privacidad.</li>
-<li><b>DORA dentro de SPACE</b>: P (lead time, MTTR, CFR), E (lead time como sensor de fricción), A (deployment frequency — cadencia del sistema, nunca evaluación individual). DORA = objetividad; SPACE = guardrail contra burnout; DevEx = la pieza faltante (causas cotidianas).</li>
-<li><b>DevEx (ACM Queue)</b>: estado de flujo, carga cognitiva, bucles de retroalimentación — cada uno con métricas objetivas y subjetivas.</li>
-<li><b>Caso «defender ante la junta»</b>: recorte de 15%, equipo de 12. 20 días → 2 días, 5 ingenieros/equipo, $500/día/ingeniero, 10 equipos. Ahorro = 18 días × 5 × $500 = <b>$45.000 por equipo</b> por despliegue de infraestructura → <b>$450.000</b> para 10 equipos.</li></ul>
-</div>
 </section>
+
 
 <!-- ============ BANCO ============ -->
 <section id="banco">
